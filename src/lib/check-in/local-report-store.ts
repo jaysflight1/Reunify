@@ -1,0 +1,116 @@
+import "server-only";
+
+import {
+  ACTIVE_DRILL_ID,
+  NEED_HELP_ROOM,
+  OFF_CAMPUS_ROOM,
+} from "@/lib/firebase/config";
+import type {
+  StudentReport,
+  StudentReportInput,
+  TeacherReportSubmit,
+  TeacherRoomReport,
+} from "@/lib/firebase/types";
+
+type LocalStore = {
+  studentReports: Map<string, StudentReport>;
+  teacherReports: Map<string, TeacherRoomReport>;
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __reunifyLocalReportStore: LocalStore | undefined;
+}
+
+function store(): LocalStore {
+  if (!globalThis.__reunifyLocalReportStore) {
+    globalThis.__reunifyLocalReportStore = {
+      studentReports: new Map(),
+      teacherReports: new Map(),
+    };
+  }
+  return globalThis.__reunifyLocalReportStore;
+}
+
+function studentDocId(studentId: string): string {
+  return `${ACTIVE_DRILL_ID}_${studentId.trim()}`;
+}
+
+function teacherDocId(roomNumber: string, teacherName: string): string {
+  const key = `${roomNumber.trim()}_${teacherName.trim().toLowerCase()}`;
+  return `${ACTIVE_DRILL_ID}_${key.replace(/\s+/g, "-")}`;
+}
+
+function mapStudentInput(input: StudentReportInput, id: string, now: number): StudentReport {
+  const offCampus = input.offCampus && input.status === "safe";
+  const needHelp = input.status === "unsafe";
+
+  return {
+    id,
+    drillId: ACTIVE_DRILL_ID,
+    studentUid: `local-${input.studentId.trim()}`,
+    studentName: input.studentName.trim(),
+    studentId: input.studentId.trim(),
+    grade: input.grade,
+    status: input.status,
+    offCampus,
+    shooterNearby: needHelp ? Boolean(input.shooterNearby) : false,
+    roomNumber: offCampus
+      ? OFF_CAMPUS_ROOM
+      : needHelp
+        ? NEED_HELP_ROOM
+        : input.roomNumber,
+    teacherName: offCampus || needHelp ? "" : input.teacherName.trim(),
+    location: input.location,
+    note: input.note?.trim() || null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function upsertLocalStudentReport(input: StudentReportInput): StudentReport {
+  const now = Date.now();
+  const id = studentDocId(input.studentId);
+  const existing = store().studentReports.get(id);
+  const report = mapStudentInput(input, id, now);
+  if (existing) {
+    report.createdAt = existing.createdAt;
+  }
+  store().studentReports.set(id, report);
+  return report;
+}
+
+export function upsertLocalTeacherReport(input: TeacherReportSubmit): TeacherRoomReport {
+  const now = Date.now();
+  const id = teacherDocId(input.roomNumber, input.teacherName);
+  const existing = store().teacherReports.get(id);
+
+  const report: TeacherRoomReport = {
+    id,
+    drillId: ACTIVE_DRILL_ID,
+    teacherUid: `local-teacher-${input.roomNumber}`,
+    roomNumber: input.roomNumber,
+    spokenRoomNumber: input.spokenRoomNumber ?? null,
+    teacherName: input.teacherName.trim(),
+    presentIds: input.presentIds,
+    missingIds: input.missingIds,
+    unmatchedMissing: input.unmatchedMissing ?? [],
+    allAccounted: input.allAccounted,
+    note: input.note?.trim() || null,
+    transcript: input.transcript?.trim() || null,
+    inputMode: input.inputMode,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  store().teacherReports.set(id, report);
+  return report;
+}
+
+export function listLocalStudentReports(): StudentReport[] {
+  return [...store().studentReports.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export function listLocalTeacherReports(): TeacherRoomReport[] {
+  return [...store().teacherReports.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+}

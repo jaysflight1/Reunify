@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 type Status = {
   clientConfigured: boolean;
   adminConfigured: boolean;
+  localMode?: boolean;
   drillId: string;
 };
 
@@ -40,7 +41,20 @@ export function FirebaseSetupBanner() {
     }
   };
 
-  if (!status?.clientConfigured) return null;
+  if (!status?.clientConfigured && !status?.localMode) return null;
+
+  if (status.localMode && !status.clientConfigured) {
+    return (
+      <div className="border-b border-[#232a35] bg-[#0c0f13] px-4 py-2 text-xs text-[#94a3b8]">
+        <span>
+          Judge demo · drill <span className="font-mono text-[#cbd5e1]">{status.drillId}</span>
+          <span className="ml-2 text-sky-400">
+            Student and teacher check-ins sync here without Firebase env vars
+          </span>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="border-b border-[#232a35] bg-[#0c0f13] px-4 py-2 text-xs text-[#94a3b8]">

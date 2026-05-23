@@ -8,7 +8,7 @@ type StatsBarProps = {
   isLive: boolean;
   onToggleLive: () => void;
   onSeedBurst: () => void;
-  dataMode?: "demo" | "firebase";
+  dataMode?: "demo" | "firebase" | "local";
   firebaseConnected?: boolean;
 };
 
@@ -44,7 +44,11 @@ export function StatsBar({
           </h1>
           <p className="text-[11px] text-[#64748b]">
             Staff only · Los Altos HS ·{" "}
-            {dataMode === "firebase" ? (
+            {dataMode === "local" ? (
+              <span className={firebaseConnected ? "text-emerald-500" : "text-amber-500"}>
+                {firebaseConnected ? "Live check-ins" : "Waiting for check-ins…"}
+              </span>
+            ) : dataMode === "firebase" ? (
               <span className={firebaseConnected ? "text-emerald-500" : "text-amber-500"}>
                 {firebaseConnected ? "Firebase live" : "Firebase connecting…"}
               </span>

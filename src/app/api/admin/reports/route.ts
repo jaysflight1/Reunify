@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import {
+  listLocalStudentReports,
+  listLocalTeacherReports,
+} from "@/lib/check-in/local-report-store";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
+import {
   firebaseAdminConfigError,
   fetchDrillReportsAdmin,
   fetchTeacherReportsAdmin,
@@ -8,6 +13,14 @@ import {
 import { ACTIVE_DRILL_ID } from "@/lib/firebase/config";
 
 export async function GET() {
+  if (isLocalCheckInMode()) {
+    return NextResponse.json({
+      reports: listLocalStudentReports(),
+      teacherReports: listLocalTeacherReports(),
+      source: "local",
+    });
+  }
+
   if (!isFirebaseAdminConfigured()) {
     return NextResponse.json(
       {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { ACTIVE_DRILL_ID, isFirebaseConfigured } from "@/lib/firebase/config";
 import { subscribeToDrillReports } from "@/lib/firebase/reports";
 import type { StudentReport, TeacherRoomReport } from "@/lib/firebase/types";
@@ -10,7 +11,7 @@ type FirebaseReportsState = {
   teacherReports: TeacherRoomReport[];
   connected: boolean;
   error: string | null;
-  source: "firestore" | "api" | "off";
+  source: "firestore" | "api" | "local" | "off";
 };
 
 const POLL_MS = 4000;
@@ -57,7 +58,7 @@ export function useFirebaseReports(enabled: boolean): FirebaseReportsState {
         teacherReports: json.teacherReports ?? [],
         connected: true,
         error: null,
-        source: "api",
+        source: isLocalCheckInMode() ? "local" : "api",
       });
       return true;
     } catch (e) {
@@ -71,7 +72,9 @@ export function useFirebaseReports(enabled: boolean): FirebaseReportsState {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !isFirebaseConfigured()) {
+    const localMode = isLocalCheckInMode();
+
+    if (!enabled || (!isFirebaseConfigured() && !localMode)) {
       setState({
         reports: [],
         teacherReports: [],
@@ -80,6 +83,18 @@ export function useFirebaseReports(enabled: boolean): FirebaseReportsState {
         source: "off",
       });
       return;
+    }
+
+    if (localMode) {
+      let cancelled = false;
+      void loadFromApi();
+      const pollId = setInterval(() => {
+        if (!cancelled) void loadFromApi();
+      }, POLL_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(pollId);
+      };
     }
 
     let cancelled = false;

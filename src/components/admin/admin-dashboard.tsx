@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ALL_ROSTER_STUDENTS, LAHS_ROOMS } from "@/lib/lahs-rooms";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
@@ -81,6 +82,7 @@ function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentReco
 export function AdminDashboard() {
   const live = useAdminLiveData();
   const firebaseOn = isFirebaseConfigured();
+  const localMode = isLocalCheckInMode();
   const [selectedRecord, setSelectedRecord] = useState<AdminStudentRecord | null>(null);
 
   const studentRecords = useMemo(() => {
@@ -120,7 +122,9 @@ export function AdminDashboard() {
         firebaseConnected={live.firebaseConnected}
       />
 
-      {firebaseOn && live.mode === "firebase" && live.events.length === 0 ? (
+      {(firebaseOn || localMode) &&
+      (live.mode === "firebase" || live.mode === "local") &&
+      live.events.length === 0 ? (
         <p className="border-b border-amber-900/30 bg-amber-950/20 px-4 py-2 text-center text-xs text-amber-200/90">
           Waiting for student check-ins — share{" "}
           <span className="font-mono">/check-in</span> on student phones
@@ -158,7 +162,7 @@ export function AdminDashboard() {
             />
           </div>
           <p className="mt-2 shrink-0 px-1 text-[10px] leading-relaxed text-[#475569]">
-            {live.mode === "firebase"
+            {live.mode === "firebase" || live.mode === "local"
               ? `${live.events.length} checked in · ${LAHS_ROOMS.length} rooms · click a tile for roster`
               : `Demo · ${LAHS_ROOMS.length} rooms · ${ALL_ROSTER_STUDENTS.length} students · click room for detail`}
           </p>

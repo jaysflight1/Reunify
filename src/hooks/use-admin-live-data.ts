@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { formatTime } from "@/lib/demo-data";
 import type { StudentReport } from "@/lib/firebase/types";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured, NEED_HELP_ROOM } from "@/lib/firebase/config";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { useFirebaseReports } from "@/hooks/use-firebase-reports";
@@ -56,7 +57,8 @@ function eventsToCheckIns(events: CheckInEvent[]): RoomCheckIn[] {
 }
 
 export function useAdminLiveData() {
-  const firebaseEnabled = isFirebaseConfigured();
+  const localMode = isLocalCheckInMode();
+  const firebaseEnabled = isFirebaseConfigured() || localMode;
   const firebase = useFirebaseReports(firebaseEnabled);
   const sim = useLiveSimulation();
 
@@ -138,7 +140,7 @@ export function useAdminLiveData() {
 
     return {
       ...base,
-      mode: "firebase" as const,
+      mode: localMode ? ("local" as const) : ("firebase" as const),
       events: [...teacherMissingEvents, ...teacherEvents, ...events].sort((a, b) =>
         a.at < b.at ? 1 : -1,
       ),
@@ -157,7 +159,7 @@ export function useAdminLiveData() {
             : sim.lastTick,
       isLive: sim.isLive,
     };
-  }, [firebaseEnabled, firebase, sim]);
+  }, [firebaseEnabled, localMode, firebase, sim]);
 }
 
 export type { RoomEvacStats, TeacherRoomSnapshot };

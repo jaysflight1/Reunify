@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Status } from "@/lib/demo-data";
 import { EXAMPLE_STUDENTS, type ExampleStudent } from "@/lib/demo/example-students";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
+import { submitStudentReportClient } from "@/lib/check-in/submit-reports";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { ensureStudentAuth, submitStudentReport } from "@/lib/firebase/reports";
+import { ensureStudentAuth } from "@/lib/firebase/reports";
 import {
   fetchRoomsFromFirestore,
   fallbackRooms,
@@ -74,6 +76,8 @@ export function CheckInForm() {
   const [authReady, setAuthReady] = useState(false);
 
   const firebaseReady = isFirebaseConfigured();
+  const localMode = isLocalCheckInMode();
+  const checkInReady = firebaseReady || localMode;
   const onCampus = form.status === "safe" && !form.offCampus;
   const needHelp = form.status === "unsafe";
   const needsRoom = onCampus;
@@ -293,7 +297,7 @@ export function CheckInForm() {
       setError("Select your name or student ID from the list.");
       return;
     }
-    if (!firebaseReady) {
+    if (!checkInReady) {
       setError("Check-in is offline. Firebase is not configured yet.");
       return;
     }
@@ -305,7 +309,7 @@ export function CheckInForm() {
     setSubmitting(true);
     try {
       const voiceNote = speech.liveText.trim();
-      await submitStudentReport({
+      await submitStudentReportClient({
         studentName: form.studentName,
         studentId: form.studentId,
         grade: form.grade,
@@ -364,7 +368,11 @@ export function CheckInForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {!firebaseReady ? (
+      {localMode ? (
+        <p className="rounded-lg border border-sky-900/40 bg-sky-950/30 px-3 py-2 text-sm text-sky-200">
+          Live demo · your report appears on the staff dashboard in real time
+        </p>
+      ) : !firebaseReady ? (
         <p className="rounded-lg border border-amber-900/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
           Firebase env vars missing — form is preview only until configured.
         </p>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
+import { submitTeacherRoomReportClient } from "@/lib/check-in/submit-reports";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { submitTeacherRoomReport } from "@/lib/firebase/teacher-reports";
 import { LAHS_ROOMS, getRoomByNumber, type LahsRoom } from "@/lib/lahs-rooms";
 import { parseTeacherYap, rosterFromSelection } from "@/lib/teacher/parse-yap";
 import { useGeminiVoiceParse } from "@/hooks/use-gemini-voice-parse";
@@ -25,6 +26,8 @@ type TeacherOption = {
 
 export function TeacherCheckIn() {
   const firebaseReady = isFirebaseConfigured();
+  const localMode = isLocalCheckInMode();
+  const checkInReady = firebaseReady || localMode;
   const speech = useSpeechRecognition();
 
   const [mode, setMode] = useState<InputMode>("voice");
@@ -246,7 +249,7 @@ export function TeacherCheckIn() {
 
   const submit = useCallback(async () => {
     setError(null);
-    if (!firebaseReady) {
+    if (!checkInReady) {
       setError("Firebase is not configured.");
       return;
     }
@@ -291,7 +294,7 @@ export function TeacherCheckIn() {
 
     setSubmitting(true);
     try {
-      await submitTeacherRoomReport(payload);
+      await submitTeacherRoomReportClient(payload);
       setSubmitted(true);
       speech.stop();
     } catch (e) {
@@ -300,7 +303,7 @@ export function TeacherCheckIn() {
       setSubmitting(false);
     }
   }, [
-    firebaseReady,
+    checkInReady,
     room,
     mode,
     yap,
@@ -336,7 +339,11 @@ export function TeacherCheckIn() {
 
   return (
     <div className="flex flex-col gap-5">
-      {!firebaseReady ? (
+      {localMode ? (
+        <p className="rounded-lg border border-sky-900/40 bg-sky-950/30 px-3 py-2 text-sm text-sky-200">
+          Live demo · roll call syncs to the staff dashboard in real time
+        </p>
+      ) : !firebaseReady ? (
         <p className="rounded-lg border border-amber-900/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
           Firebase env vars missing — configure to submit roll call.
         </p>
@@ -514,7 +521,7 @@ export function TeacherCheckIn() {
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={submitting || !firebaseReady || !roomNumber}
+        disabled={submitting || !checkInReady || !roomNumber}
         className="w-full rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 py-4 text-base font-semibold text-white shadow-lg shadow-sky-950/40 disabled:opacity-50"
       >
         {submitting ? "Sending…" : "Send roll call to staff"}
