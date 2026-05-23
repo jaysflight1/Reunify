@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { submitTeacherRoomReport } from "@/lib/firebase/teacher-reports";
 import { LAHS_ROOMS, getRoomByNumber, type LahsRoom } from "@/lib/lahs-rooms";
 import { parseTeacherYap, rosterFromSelection } from "@/lib/teacher/parse-yap";
+import { useGeminiVoiceParse } from "@/hooks/use-gemini-voice-parse";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { VoiceCapture } from "./voice-capture";
 import { RosterChecklist } from "./roster-checklist";
@@ -36,18 +37,30 @@ export function TeacherCheckIn() {
     setPresentIds(new Set(room.roster.map((s) => s.id)));
   }, [room]);
 
-  const yap = useMemo(
+  const regexYap = useMemo(
     () => parseTeacherYap(speech.liveText, roomNumber),
     [speech.liveText, roomNumber],
   );
 
+  const gemini = useGeminiVoiceParse({
+    enabled: mode === "voice",
+    transcript: speech.liveText,
+    listening: speech.listening,
+    selectedRoomNumber: roomNumber,
+    roster,
+  });
+
+  const yap = gemini.yap ?? regexYap;
+  const parseSource = gemini.yap ? gemini.source : "regex";
+
   useEffect(() => {
     if (mode !== "voice" || speech.listening || !speech.transcript) return;
+    if (gemini.parsing) return;
     if (yap.confidence === "low") return;
     if (yap.presentIds.length > 0 || yap.allAccounted) {
       setPresentIds(new Set(yap.presentIds));
     }
-  }, [mode, speech.listening, speech.transcript, yap]);
+  }, [mode, speech.listening, speech.transcript, yap, gemini.parsing]);
 
   const checkboxSelection = useMemo(
     () => rosterFromSelection(roster, presentIds),
@@ -219,6 +232,9 @@ export function TeacherCheckIn() {
             selectedRoom={roomNumber}
             spokenRoom={yap.spokenRoomNumber}
             submitRoom={yap.effectiveRoomNumber}
+            parsing={gemini.parsing}
+            parseSource={parseSource}
+            warning={gemini.warning}
           />
         </>
       ) : (
@@ -273,18 +289,31 @@ function ParsePreview({
   selectedRoom,
   spokenRoom,
   submitRoom,
+  parsing,
+  parseSource,
+  warning,
 }: {
   summary: string;
   unmatched: string[];
   selectedRoom: string;
   spokenRoom: string | null;
   submitRoom: string;
+  parsing: boolean;
+  parseSource: "gemini" | "regex" | null;
+  warning: string | null;
 }) {
   return (
     <div className="rounded-xl border border-[#232a35] bg-[#0c0f13] px-4 py-3">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
-        Parsed roll call
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
+          Parsed roll call
+        </p>
+        {parsing ? (
+          <span className="text-[10px] text-sky-400/90">Understanding…</span>
+        ) : parseSource === "gemini" ? (
+          <span className="text-[10px] text-violet-400/90">Gemini</span>
+        ) : null}
+      </div>
       <p className="mt-1 text-[11px] text-[#94a3b8]">
         Submitting as room <span className="font-mono text-[#e2e8f0]">{submitRoom}</span>
         {spokenRoom
@@ -296,6 +325,9 @@ function ParsePreview({
         <p className="mt-2 text-[10px] text-amber-400/90">
           Unmatched names: {unmatched.join(", ")} — fix in roster tab if needed
         </p>
+      ) : null}
+      {warning ? (
+        <p className="mt-2 text-[10px] text-amber-400/80">Fallback: {warning}</p>
       ) : null}
     </div>
   );
