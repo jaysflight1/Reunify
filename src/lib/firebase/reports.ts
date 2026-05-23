@@ -13,6 +13,8 @@ import {
 import { signInAnonymously } from "firebase/auth";
 import {
   ACTIVE_DRILL_ID,
+  NEED_HELP_ROOM,
+  OFF_CAMPUS_ROOM,
   getClientAuth,
   getClientFirestore,
   isFirebaseConfigured,
@@ -32,6 +34,8 @@ function mapDoc(id: string, data: DocumentData): StudentReport {
     studentId: data.studentId ?? "",
     grade: data.grade ?? "",
     status: data.status === "unsafe" ? "unsafe" : "safe",
+    offCampus: Boolean(data.offCampus) || data.roomNumber === OFF_CAMPUS_ROOM,
+    shooterNearby: Boolean(data.shooterNearby),
     roomNumber: data.roomNumber ?? "",
     teacherName: data.teacherName ?? "",
     location: data.location ?? null,
@@ -99,6 +103,8 @@ export async function submitStudentReport(input: StudentReportInput): Promise<vo
     const db = getClientFirestore();
     const docId = `${ACTIVE_DRILL_ID}_${uid}`;
     const ref = doc(db, REPORTS, docId);
+    const offCampus = input.offCampus && input.status === "safe";
+    const needHelp = input.status === "unsafe";
     const payload = {
       drillId: ACTIVE_DRILL_ID,
       studentUid: uid,
@@ -106,8 +112,14 @@ export async function submitStudentReport(input: StudentReportInput): Promise<vo
       studentId: input.studentId.trim(),
       grade: input.grade,
       status: input.status,
-      roomNumber: input.roomNumber,
-      teacherName: input.teacherName.trim(),
+      offCampus,
+      shooterNearby: needHelp ? Boolean(input.shooterNearby) : false,
+      roomNumber: offCampus
+        ? OFF_CAMPUS_ROOM
+        : needHelp
+          ? NEED_HELP_ROOM
+          : input.roomNumber,
+      teacherName: offCampus || needHelp ? "" : input.teacherName.trim(),
       location: input.location,
       note: input.note?.trim() || null,
       updatedAt: serverTimestamp(),

@@ -7,12 +7,16 @@ import { ensureStudentAuth, submitStudentReport } from "@/lib/firebase/reports";
 import { fetchRoomsFromFirestore, fallbackRooms, type FirestoreRoom } from "@/lib/firebase/rooms";
 import type { GeoLocation } from "@/lib/firebase/types";
 import { teacherForRoomOption } from "@/lib/lahs-rooms/room-options";
+import { EmergencyHelpPanel } from "@/components/student/emergency-help-panel";
+import { LocationSharedStatus } from "@/components/student/location-shared-status";
+import { Simulated911Button } from "@/components/student/simulated-911-button";
 
 type FormState = {
   studentName: string;
   studentId: string;
   grade: string;
   status: Status;
+  offCampus: boolean;
   roomNumber: string;
   teacherName: string;
   note: string;
@@ -28,10 +32,12 @@ export function CheckInForm() {
     studentId: "",
     grade: "10",
     status: "safe",
+    offCampus: false,
     roomNumber: "408",
     teacherName: teacherForRoomOption("408"),
     note: "",
   });
+  const [shooterNearby, setShooterNearby] = useState(false);
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [locStatus, setLocStatus] = useState<"idle" | "loading" | "ok" | "denied">("idle");
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +46,9 @@ export function CheckInForm() {
   const [authReady, setAuthReady] = useState(false);
 
   const firebaseReady = isFirebaseConfigured();
+  const onCampus = form.status === "safe" && !form.offCampus;
+  const needHelp = form.status === "unsafe";
+  const needsRoom = onCampus;
 
   const loadRooms = useCallback(async () => {
     const local = fallbackRooms();
@@ -73,13 +82,14 @@ export function CheckInForm() {
   }, [loadRooms]);
 
   useEffect(() => {
+    if (!onCampus) return;
     const room = rooms.find((r) => r.number === form.roomNumber);
     if (room) {
       setForm((f) => ({ ...f, teacherName: room.teacher }));
     } else if (form.roomNumber) {
       setForm((f) => ({ ...f, teacherName: teacherForRoomOption(form.roomNumber) }));
     }
-  }, [form.roomNumber, rooms]);
+  }, [form.roomNumber, rooms, onCampus]);
 
   const captureLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -113,6 +123,10 @@ export function CheckInForm() {
       setError("Check-in is offline. Firebase is not configured yet.");
       return;
     }
+    if (needsRoom && !form.roomNumber) {
+      setError("Select the room you are in.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -121,8 +135,10 @@ export function CheckInForm() {
         studentId: form.studentId,
         grade: form.grade,
         status: form.status,
-        roomNumber: form.roomNumber,
-        teacherName: form.teacherName,
+        offCampus: form.offCampus && form.status === "safe",
+        shooterNearby: needHelp ? shooterNearby : undefined,
+        roomNumber: needsRoom ? form.roomNumber : "",
+        teacherName: needsRoom ? form.teacherName : "",
         location,
         note: form.note || undefined,
       });
@@ -135,12 +151,30 @@ export function CheckInForm() {
   };
 
   if (submitted) {
+    const emergency = needHelp;
     return (
-      <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 p-6 text-center">
-        <p className="text-lg font-semibold text-emerald-300">Report sent</p>
-        <p className="mt-2 text-sm text-[#94a3b8]">
-          Staff can see your status. You can close this page or send an update below.
+      <div
+        className={`rounded-xl border p-6 text-center ${
+          emergency
+            ? "border-rose-900/50 bg-rose-950/30"
+            : "border-emerald-900/50 bg-emerald-950/30"
+        }`}
+      >
+        <p
+          className={`text-lg font-semibold ${emergency ? "text-rose-300" : "text-emerald-300"}`}
+        >
+          {emergency ? "Help alert sent" : "Report sent"}
         </p>
+        <p className="mt-2 text-sm text-[#94a3b8]">
+          {emergency
+            ? "Staff see your alert and location if shared. Use your own phone to call 911 in a real emergency."
+            : "Staff can see your status. You can close this page or send an update below."}
+        </p>
+        {emergency ? (
+          <div className="mt-4">
+            <Simulated911Button className="py-3 text-sm" />
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => setSubmitted(false)}
@@ -201,80 +235,88 @@ export function CheckInForm() {
       <Field label="How are you?" required>
         <div className="grid grid-cols-2 gap-2">
           <StatusButton
-            active={form.status === "safe"}
+            active={form.status === "safe" && !form.offCampus}
             tone="safe"
-            onClick={() => setForm((f) => ({ ...f, status: "safe" }))}
+            onClick={() => setForm((f) => ({ ...f, status: "safe", offCampus: false }))}
           >
-            I&apos;m safe
+            Safe · on campus
           </StatusButton>
           <StatusButton
             active={form.status === "unsafe"}
             tone="unsafe"
-            onClick={() => setForm((f) => ({ ...f, status: "unsafe" }))}
+            onClick={() => setForm((f) => ({ ...f, status: "unsafe", offCampus: false }))}
           >
             I need help
           </StatusButton>
         </div>
-      </Field>
-
-      <Field label="Room you're in" required>
-        <select
-          className={inputClass}
-          value={form.roomNumber}
-          disabled={roomsLoading}
-          onChange={(e) => setForm((f) => ({ ...f, roomNumber: e.target.value }))}
-        >
-          {rooms.map((r) => (
-            <option key={r.number} value={r.number}>
-              {r.label} · {r.building}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Teacher with you" required>
-        <input
-          className={inputClass}
-          value={form.teacherName}
-          onChange={(e) => setForm((f) => ({ ...f, teacherName: e.target.value }))}
-        />
-      </Field>
-
-      <Field label="Location">
         <button
           type="button"
-          onClick={captureLocation}
-          className="w-full rounded-lg border border-[#2a3340] bg-[#12161d] px-4 py-3 text-sm font-medium text-[#e2e8f0] active:bg-[#1a212b]"
+          onClick={() => setForm((f) => ({ ...f, status: "safe", offCampus: true }))}
+          className={`mt-2 w-full rounded-lg border px-3 py-3.5 text-sm font-semibold transition ${
+            form.status === "safe" && form.offCampus
+              ? "border-sky-600 bg-sky-950/40 text-sky-300"
+              : "border-[#2a3340] bg-[#12161d] text-[#94a3b8]"
+          }`}
         >
-          {locStatus === "loading"
-            ? "Getting GPS…"
-            : locStatus === "ok"
-              ? `GPS captured (±${Math.round(location?.accuracy ?? 0)}m)`
-              : locStatus === "denied"
-                ? "GPS unavailable — tap to retry"
-                : "Share my location"}
+          Safe · off campus
         </button>
+        {form.offCampus ? (
+          <p className="mt-2 text-xs leading-relaxed text-[#94a3b8]">
+            You don&apos;t need a room or teacher — share location below if you can.
+          </p>
+        ) : null}
       </Field>
 
-      {form.status === "unsafe" ? (
-        <Field label="Note (optional)">
-          <textarea
-            className={`${inputClass} min-h-[72px] resize-none`}
-            value={form.note}
-            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-            placeholder="Injury, blocked exit, with group…"
-          />
-        </Field>
+      {needHelp ? (
+        <EmergencyHelpPanel
+          shooterNearby={shooterNearby}
+          onShooterNearbyChange={setShooterNearby}
+          locStatus={locStatus}
+          onCaptureLocation={captureLocation}
+          note={form.note}
+          onNoteChange={(note) => setForm((f) => ({ ...f, note }))}
+        />
+      ) : null}
+
+      {needsRoom ? (
+        <>
+          <Field label="Room you're in" required>
+            <select
+              className={inputClass}
+              value={form.roomNumber}
+              disabled={roomsLoading}
+              onChange={(e) => setForm((f) => ({ ...f, roomNumber: e.target.value }))}
+            >
+              {rooms.map((r) => (
+                <option key={r.number} value={r.number}>
+                  {r.label} · {r.building}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Teacher with you" required>
+            <input
+              className={inputClass}
+              value={form.teacherName}
+              onChange={(e) => setForm((f) => ({ ...f, teacherName: e.target.value }))}
+            />
+          </Field>
+        </>
+      ) : null}
+
+      {!needHelp ? (
+        <LocationSharedStatus locStatus={locStatus} onCaptureLocation={captureLocation} />
       ) : null}
 
       {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
       <button
         type="submit"
-        disabled={submitting || roomsLoading}
+        disabled={submitting || (needsRoom && roomsLoading)}
         className="mt-2 w-full rounded-xl bg-[#e2e8f0] py-4 text-base font-semibold text-[#0c0f13] disabled:opacity-50"
       >
-        {submitting ? "Sending…" : "Send status to staff"}
+        {submitting ? "Sending…" : needHelp ? "Send help alert" : "Send status to staff"}
       </button>
     </form>
   );

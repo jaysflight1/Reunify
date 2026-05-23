@@ -28,9 +28,26 @@ service cloud.firestore {
         && request.resource.data.studentId is string
         && request.resource.data.grade is string
         && request.resource.data.status in ['safe', 'unsafe']
+        && request.resource.data.offCampus is bool
         && request.resource.data.roomNumber is string
         && request.resource.data.teacherName is string
-        && request.resource.data.teacherName.size() > 0
+        && request.resource.data.shooterNearby is bool
+        && (
+          (request.resource.data.offCampus == true
+            && request.resource.data.status == 'safe'
+            && request.resource.data.roomNumber == 'off-campus'
+            && request.resource.data.teacherName == ''
+            && request.resource.data.shooterNearby == false)
+          || (request.resource.data.status == 'unsafe'
+            && request.resource.data.roomNumber == 'need-help'
+            && request.resource.data.teacherName == ''
+            && request.resource.data.offCampus == false)
+          || (request.resource.data.offCampus == false
+            && request.resource.data.status == 'safe'
+            && request.resource.data.roomNumber.size() > 0
+            && request.resource.data.teacherName.size() > 0
+            && request.resource.data.shooterNearby == false)
+        )
         && (!('note' in request.resource.data) || request.resource.data.note == null || request.resource.data.note is string)
         && (!('location' in request.resource.data) || request.resource.data.location == null || (
           request.resource.data.location.latitude is number
@@ -49,6 +66,7 @@ service cloud.firestore {
         && request.resource.data.drillId is string
         && request.resource.data.roomNumber is string
         && request.resource.data.roomNumber.size() > 0
+        && (!('spokenRoomNumber' in request.resource.data) || request.resource.data.spokenRoomNumber == null || request.resource.data.spokenRoomNumber is string)
         && request.resource.data.teacherName is string
         && request.resource.data.teacherName.size() > 0
         && request.resource.data.teacherName.size() < 120

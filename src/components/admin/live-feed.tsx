@@ -53,9 +53,16 @@ export function LiveFeed({ events }: LiveFeedProps) {
                     {evt.student.name}
                   </p>
                   <p className="text-[10px] text-[#64748b]">
-                    Gr {evt.student.grade} · Rm {evt.roomNumber}
+                    Gr {evt.student.grade}
+                    {evt.roomNumber === "Off campus"
+                      ? " · Off campus"
+                      : evt.roomNumber === "Need help"
+                        ? " · Need help"
+                        : ` · Rm ${evt.roomNumber}`}
                   </p>
-                  <p className="truncate text-[10px] text-[#94a3b8]">{evt.teacherName}</p>
+                  {evt.teacherName && evt.teacherName !== "—" ? (
+                    <p className="truncate text-[10px] text-[#94a3b8]">{evt.teacherName}</p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <StatusChip status={evt.status} />

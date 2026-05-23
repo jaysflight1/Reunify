@@ -3,15 +3,17 @@
 import { useMemo } from "react";
 import { formatTime } from "@/lib/demo-data";
 import type { StudentReport } from "@/lib/firebase/types";
-import { isFirebaseConfigured } from "@/lib/firebase/config";
+import { isFirebaseConfigured, NEED_HELP_ROOM } from "@/lib/firebase/config";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { useFirebaseReports } from "@/hooks/use-firebase-reports";
 import { useLiveSimulation } from "@/hooks/use-live-simulation";
 import {
   buildEvacuationState,
+  computeDashboardStats,
   unaccountedStudents,
   type TeacherRoomSnapshot,
 } from "@/lib/evacuation-state";
+import type { RoomStudent } from "@/lib/lahs-rooms";
 import {
   buildRoomEvacStatsMap,
   groupCheckInsByRoom,
@@ -21,6 +23,10 @@ import {
 } from "@/lib/room-accounting";
 
 function reportToEvent(report: StudentReport): CheckInEvent {
+  const needHelp = report.status === "unsafe" || report.roomNumber === NEED_HELP_ROOM;
+  const shooterNote = report.shooterNearby ? "Shooter actively nearby" : null;
+  const combinedNote = [shooterNote, report.note].filter(Boolean).join(" · ") || undefined;
+
   return {
     id: report.id,
     student: {
@@ -28,11 +34,13 @@ function reportToEvent(report: StudentReport): CheckInEvent {
       name: report.studentName,
       grade: report.grade || "—",
     },
-    roomNumber: report.roomNumber,
-    teacherName: report.teacherName,
+    roomNumber: report.offCampus ? "Off campus" : needHelp ? "Need help" : report.roomNumber,
+    teacherName: report.offCampus || needHelp ? "—" : report.teacherName,
     status: report.status,
     at: formatTime(new Date(report.updatedAt)),
-    note: report.note ?? (report.status === "unsafe" ? "Needs follow-up" : undefined),
+    note:
+      combinedNote ??
+      (report.offCampus ? "Safe off campus" : needHelp ? "Emergency help requested" : undefined),
   };
 }
 
@@ -56,7 +64,6 @@ export function useAdminLiveData() {
     const base = {
       toggleLive: sim.toggleLive,
       seedBurst: sim.seedBurst,
-      phones: sim.phones,
       firebaseConnected: firebase.connected,
       firebaseError: firebase.error,
       firebaseSource: firebase.source,
@@ -84,9 +91,8 @@ export function useAdminLiveData() {
     }
 
     const evac = buildEvacuationState(firebase.reports, firebase.teacherReports);
+    const stats = computeDashboardStats(firebase.reports, firebase.teacherReports);
     const events = firebase.reports.map(reportToEvent);
-    const safeCount = firebase.reports.filter((r) => r.status === "safe").length;
-    const unsafeCount = firebase.reports.filter((r) => r.status === "unsafe").length;
 
     const teacherEvents: CheckInEvent[] = firebase.teacherReports.map((tr) => ({
       id: `t-${tr.id}`,
@@ -97,26 +103,52 @@ export function useAdminLiveData() {
       },
       roomNumber: tr.roomNumber,
       teacherName: tr.teacherName,
-      status: tr.allAccounted ? "safe" : "unsafe",
+      status: tr.missingIds.length > 0 ? "unsafe" : "safe",
       at: formatTime(new Date(tr.updatedAt)),
       note:
         tr.missingIds.length > 0
-          ? `${tr.missingIds.length} roster missing`
+          ? `${tr.missingIds.length} not in class`
           : tr.inputMode === "voice"
             ? "Voice roll call"
             : "Roster submitted",
     }));
 
+    const missingByTeacher = new Map<string, RoomStudent>();
+    for (const snap of evac.teacherByRoom.values()) {
+      for (const s of snap.rosterMissing) {
+        missingByTeacher.set(s.id, s);
+      }
+    }
+    const teacherMissingEvents: CheckInEvent[] = [...missingByTeacher.values()].map(
+      (student) => {
+        const roomNum = student.id.match(/^r([^-]+)-/)?.[1] ?? "—";
+        const snap = evac.teacherByRoom.get(roomNum);
+        return {
+          id: `tm-${student.id}`,
+          student,
+          roomNumber: roomNum,
+          teacherName: snap?.report.teacherName ?? "—",
+          status: "unsafe" as const,
+          at: snap
+            ? formatTime(new Date(snap.report.updatedAt))
+            : formatTime(new Date()),
+          note: "Teacher: not in class",
+        };
+      },
+    );
+
     return {
       ...base,
       mode: "firebase" as const,
-      events: [...teacherEvents, ...events].sort((a, b) => (a.at < b.at ? 1 : -1)),
+      events: [...teacherMissingEvents, ...teacherEvents, ...events].sort((a, b) =>
+        a.at < b.at ? 1 : -1,
+      ),
       checkIns: evac.checkIns,
       unaccountedIds: evac.unaccountedIds,
       roomStatsMap: evac.roomStatsMap,
       teacherByRoom: evac.teacherByRoom,
-      safeCount,
-      unsafeCount,
+      safeCount: stats.safeCount,
+      unsafeCount: stats.unsafeCount,
       missingStudents: unaccountedStudents(evac.unaccountedIds),
       lastTick:
         firebase.reports[0] != null

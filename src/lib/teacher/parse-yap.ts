@@ -2,7 +2,12 @@ import { getRoomByNumber, LAHS_ROOMS, type LahsRoom, type RoomStudent } from "@/
 import { matchNamesToRoster, normalizeText, splitNameList } from "./match-roster";
 
 export type YapParseResult = {
-  roomNumber: string | null;
+  /** Room from dropdown — default unless overridden by speech. */
+  selectedRoomNumber: string;
+  /** Set only when the teacher explicitly says a room in speech. */
+  spokenRoomNumber: string | null;
+  /** spokenRoomNumber ?? selectedRoomNumber */
+  effectiveRoomNumber: string;
   room: LahsRoom | null;
   presentIds: string[];
   missingIds: string[];
@@ -15,19 +20,15 @@ export type YapParseResult = {
 const ROOM_IN_PATTERNS = [
   /\b(?:room|rm)\s*#?\s*(\d{3,4})\b/i,
   /\b(?:in|at)\s+(?:room\s*)?(\d{3,4})\b/i,
-  /\bi\s*'?m\s+in\s+(\d{3,4})\b/i,
+  /\bi\s*'?m\s+in\s+(?:room\s*)?(\d{3,4})\b/i,
+  /\bi\s*am\s+in\s+(?:room\s*)?(\d{3,4})\b/i,
 ];
 
-function extractRoomNumber(text: string): string | null {
+/** Only matches clear room phrases — never bare digits (avoids overriding the dropdown). */
+export function extractSpokenRoomNumber(text: string): string | null {
   for (const pattern of ROOM_IN_PATTERNS) {
     const m = text.match(pattern);
     if (m?.[1] && getRoomByNumber(m[1])) return m[1];
-  }
-
-  const known = new Set(LAHS_ROOMS.map((r) => r.number));
-  const tokens = text.match(/\b\d{3,4}\b/g) ?? [];
-  for (const token of tokens) {
-    if (known.has(token)) return token;
   }
   return null;
 }
@@ -63,42 +64,58 @@ function allAccountedPhrases(text: string): boolean {
 
 export function parseTeacherYap(
   transcript: string,
-  roster: RoomStudent[],
-  fallbackRoom?: string,
+  selectedRoomNumber: string,
 ): YapParseResult {
   const text = transcript.trim();
-  const roomNumber = extractRoomNumber(text) ?? fallbackRoom ?? null;
-  const room = roomNumber ? getRoomByNumber(roomNumber) ?? null : null;
+  const spokenRoomNumber = text ? extractSpokenRoomNumber(text) : null;
+  const effectiveRoomNumber = spokenRoomNumber ?? selectedRoomNumber;
+  const room = getRoomByNumber(effectiveRoomNumber) ?? null;
+  const roster = room?.roster ?? [];
 
   if (!text) {
-    return emptyResult(roomNumber, room, "Say your room and who is missing.");
+    return emptyResult(
+      selectedRoomNumber,
+      spokenRoomNumber,
+      effectiveRoomNumber,
+      room,
+      "Say who is missing, or “room 903” if not using the dropdown.",
+    );
   }
 
-  if (!roomNumber || !room) {
+  if (!room) {
     return {
-      roomNumber,
-      room,
+      selectedRoomNumber,
+      spokenRoomNumber,
+      effectiveRoomNumber,
+      room: null,
       presentIds: [],
       missingIds: [],
       unmatchedMissing: [],
       allAccounted: false,
       confidence: "low",
-      summary: "Could not find a room number — try “room 903”.",
+      summary: spokenRoomNumber
+        ? `Room ${spokenRoomNumber} is not in the catalog.`
+        : "Select your room from the dropdown.",
     };
   }
 
   const rosterIds = roster.map((s) => s.id);
+  const roomLabel = spokenRoomNumber
+    ? `Room ${spokenRoomNumber} (from voice)`
+    : `Room ${selectedRoomNumber} (dropdown)`;
 
   if (allAccountedPhrases(text) && !extractMissingFragment(text)) {
     return {
-      roomNumber,
+      selectedRoomNumber,
+      spokenRoomNumber,
+      effectiveRoomNumber,
       room,
       presentIds: rosterIds,
       missingIds: [],
       unmatchedMissing: [],
       allAccounted: true,
       confidence: "high",
-      summary: `Room ${roomNumber} · everyone accounted`,
+      summary: `${roomLabel} · everyone accounted`,
     };
   }
 
@@ -109,7 +126,9 @@ export function parseTeacherYap(
     const missingIds = matched.map((s) => s.id);
     const presentIds = rosterIds.filter((id) => !missingIds.includes(id));
     return {
-      roomNumber,
+      selectedRoomNumber,
+      spokenRoomNumber,
+      effectiveRoomNumber,
       room,
       presentIds,
       missingIds,
@@ -118,30 +137,36 @@ export function parseTeacherYap(
       confidence: matched.length > 0 || unmatched.length > 0 ? "high" : "medium",
       summary:
         missingIds.length === 0 && unmatched.length === 0
-          ? `Room ${roomNumber} · could not match names — use roster checkboxes`
-          : `Room ${roomNumber} · ${missingIds.length + unmatched.length} missing`,
+          ? `${roomLabel} · could not match names — use roster checkboxes`
+          : `${roomLabel} · ${missingIds.length + unmatched.length} missing`,
     };
   }
 
   return {
-    roomNumber,
+    selectedRoomNumber,
+    spokenRoomNumber,
+    effectiveRoomNumber,
     room,
     presentIds: [],
     missingIds: [],
     unmatchedMissing: [],
     allAccounted: false,
     confidence: "low",
-    summary: `Room ${roomNumber} — say “everyone but …” or use checkboxes`,
+    summary: `${roomLabel} — say “everyone but …” or use checkboxes`,
   };
 }
 
 function emptyResult(
-  roomNumber: string | null,
+  selectedRoomNumber: string,
+  spokenRoomNumber: string | null,
+  effectiveRoomNumber: string,
   room: LahsRoom | null,
   summary: string,
 ): YapParseResult {
   return {
-    roomNumber,
+    selectedRoomNumber,
+    spokenRoomNumber,
+    effectiveRoomNumber,
     room,
     presentIds: [],
     missingIds: [],

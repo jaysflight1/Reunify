@@ -14,6 +14,8 @@ export type StudentReport = {
   studentId: string;
   grade: string;
   status: Status;
+  offCampus: boolean;
+  shooterNearby: boolean;
   roomNumber: string;
   teacherName: string;
   location: GeoLocation | null;
@@ -27,6 +29,8 @@ export type StudentReportInput = {
   studentId: string;
   grade: string;
   status: Status;
+  offCampus: boolean;
+  shooterNearby?: boolean;
   roomNumber: string;
   teacherName: string;
   location: GeoLocation | null;
@@ -40,6 +44,8 @@ export type TeacherRoomReport = {
   drillId: string;
   teacherUid: string;
   roomNumber: string;
+  /** Room explicitly stated in voice, if different from dropdown selection. */
+  spokenRoomNumber: string | null;
   teacherName: string;
   presentIds: string[];
   missingIds: string[];
@@ -54,6 +60,7 @@ export type TeacherRoomReport = {
 
 export type TeacherReportSubmit = {
   roomNumber: string;
+  spokenRoomNumber?: string | null;
   teacherName: string;
   presentIds: string[];
   missingIds: string[];

@@ -37,14 +37,13 @@ export function TeacherCheckIn() {
   }, [room]);
 
   const yap = useMemo(
-    () => parseTeacherYap(speech.liveText, roster, roomNumber),
-    [speech.liveText, roster, roomNumber],
+    () => parseTeacherYap(speech.liveText, roomNumber),
+    [speech.liveText, roomNumber],
   );
 
   useEffect(() => {
     if (mode !== "voice" || speech.listening || !speech.transcript) return;
     if (yap.confidence === "low") return;
-    if (yap.roomNumber) setRoomNumber(yap.roomNumber);
     if (yap.presentIds.length > 0 || yap.allAccounted) {
       setPresentIds(new Set(yap.presentIds));
     }
@@ -84,11 +83,15 @@ export function TeacherCheckIn() {
       return;
     }
 
+    const submitRoom = yap.effectiveRoomNumber;
+    const submitRoomMeta = getRoomByNumber(submitRoom);
+
     const payload =
       mode === "voice"
         ? {
-            roomNumber: yap.roomNumber ?? roomNumber,
-            teacherName: teacherName.trim() || room.teacher,
+            roomNumber: submitRoom,
+            spokenRoomNumber: yap.spokenRoomNumber,
+            teacherName: teacherName.trim() || submitRoomMeta?.teacher || room.teacher,
             presentIds: yap.presentIds,
             missingIds: yap.missingIds,
             unmatchedMissing: yap.unmatchedMissing,
@@ -138,7 +141,9 @@ export function TeacherCheckIn() {
       <div className="rounded-2xl border border-emerald-900/50 bg-emerald-950/25 p-8 text-center">
         <p className="text-lg font-semibold text-emerald-300">Roll call sent</p>
         <p className="mt-2 text-sm text-[#94a3b8]">
-          Room {roomNumber} · staff command center updated
+          Room {mode === "voice" ? yap.effectiveRoomNumber : roomNumber}
+          {mode === "voice" && yap.spokenRoomNumber ? " (from voice)" : ""} · staff
+          updated
         </p>
         <button
           type="button"
@@ -208,7 +213,13 @@ export function TeacherCheckIn() {
             onToggleListen={speech.toggle}
             onClear={speech.reset}
           />
-          <ParsePreview summary={yap.summary} unmatched={yap.unmatchedMissing} />
+          <ParsePreview
+            summary={yap.summary}
+            unmatched={yap.unmatchedMissing}
+            selectedRoom={roomNumber}
+            spokenRoom={yap.spokenRoomNumber}
+            submitRoom={yap.effectiveRoomNumber}
+          />
         </>
       ) : (
         <RosterChecklist
@@ -259,14 +270,26 @@ function ModeTab({
 function ParsePreview({
   summary,
   unmatched,
+  selectedRoom,
+  spokenRoom,
+  submitRoom,
 }: {
   summary: string;
   unmatched: string[];
+  selectedRoom: string;
+  spokenRoom: string | null;
+  submitRoom: string;
 }) {
   return (
     <div className="rounded-xl border border-[#232a35] bg-[#0c0f13] px-4 py-3">
       <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
         Parsed roll call
+      </p>
+      <p className="mt-1 text-[11px] text-[#94a3b8]">
+        Submitting as room <span className="font-mono text-[#e2e8f0]">{submitRoom}</span>
+        {spokenRoom
+          ? " · heard in voice"
+          : ` · dropdown (${selectedRoom})`}
       </p>
       <p className="mt-1 text-sm text-[#e2e8f0]">{summary}</p>
       {unmatched.length > 0 ? (
