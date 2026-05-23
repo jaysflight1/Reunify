@@ -164,3 +164,48 @@ export async function seedFirestoreCatalog(
   await batch.commit();
   return { rooms: rooms.length, drill: true };
 }
+
+const FIRESTORE_BATCH_LIMIT = 500;
+
+async function deleteQueryDocs(
+  db: Firestore,
+  collectionName: string,
+  drillId: string,
+): Promise<number> {
+  let deleted = 0;
+
+  while (true) {
+    const snap = await db
+      .collection(collectionName)
+      .where("drillId", "==", drillId)
+      .limit(FIRESTORE_BATCH_LIMIT)
+      .get();
+
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+    deleted += snap.docs.length;
+
+    if (snap.size < FIRESTORE_BATCH_LIMIT) break;
+  }
+
+  return deleted;
+}
+
+/** Remove all student and teacher check-ins for a drill (demo reset). */
+export async function clearDrillReportsAdmin(
+  drillId: string = ACTIVE_DRILL_ID,
+): Promise<{ studentReports: number; teacherReports: number }> {
+  const db = requireAdminDb();
+
+  const [studentReports, teacherReports] = await Promise.all([
+    deleteQueryDocs(db, "reports", drillId),
+    deleteQueryDocs(db, "teacherReports", drillId),
+  ]);
+
+  return { studentReports, teacherReports };
+}

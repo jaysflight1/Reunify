@@ -106,3 +106,17 @@ export function listLocalStudentReports(): StudentReport[] {
 export function listLocalTeacherReports(): TeacherRoomReport[] {
   return [...store().teacherReports.values()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
+
+export function clearLocalReports(): {
+  studentReports: number;
+  teacherReports: number;
+} {
+  const s = store();
+  const counts = {
+    studentReports: s.studentReports.size,
+    teacherReports: s.teacherReports.size,
+  };
+  s.studentReports.clear();
+  s.teacherReports.clear();
+  return counts;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ALL_ROSTER_STUDENTS, LAHS_ROOMS } from "@/lib/lahs-rooms";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
@@ -89,6 +89,41 @@ export function AdminDashboard() {
     modeSelection === "demo" ? "demo" : modeSelection === "live" ? "live" : undefined;
   const live = useAdminLiveData({ forceMode });
   const [selectedRecord, setSelectedRecord] = useState<AdminStudentRecord | null>(null);
+  const [clearingLiveData, setClearingLiveData] = useState(false);
+  const [clearMessage, setClearMessage] = useState<string | null>(null);
+
+  const handleClearLiveData = useCallback(async () => {
+    const confirmed = window.confirm(
+      "Clear all real check-ins for this drill?\n\nThis deletes every student report and teacher roll call. Room catalog and drill metadata are kept. Use this before a fresh demo.",
+    );
+    if (!confirmed) return;
+
+    setClearingLiveData(true);
+    setClearMessage(null);
+    try {
+      const res = await fetch("/api/admin/clear", { method: "POST" });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        studentReports?: number;
+        teacherReports?: number;
+        error?: string;
+      };
+      if (!res.ok) {
+        setClearMessage(json.error ?? "Could not clear check-ins");
+        return;
+      }
+      const total = (json.studentReports ?? 0) + (json.teacherReports ?? 0);
+      setClearMessage(
+        total > 0
+          ? `Cleared ${json.studentReports ?? 0} student and ${json.teacherReports ?? 0} teacher report(s).`
+          : "No check-ins to clear — dashboard is already empty.",
+      );
+    } catch {
+      setClearMessage("Clear request failed");
+    } finally {
+      setClearingLiveData(false);
+    }
+  }, []);
 
   const studentRecords = useMemo(() => {
     const fromEvents = live.events.map(eventToRecord);
@@ -127,7 +162,19 @@ export function AdminDashboard() {
         firebaseConnected={live.firebaseConnected}
         liveCapable={liveCapable}
         onSelectMode={setModeSelection}
+        onClearLiveData={
+          liveCapable && (live.mode === "firebase" || live.mode === "local")
+            ? handleClearLiveData
+            : undefined
+        }
+        clearingLiveData={clearingLiveData}
       />
+
+      {clearMessage ? (
+        <p className="border-b border-[#232a35] bg-[#0c0f13] px-4 py-2 text-center text-xs text-[#94a3b8]">
+          {clearMessage}
+        </p>
+      ) : null}
 
       {(firebaseOn || localMode) &&
       (live.mode === "firebase" || live.mode === "local") &&

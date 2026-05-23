@@ -15,6 +15,8 @@ type StatsBarProps = {
   /** True when Firebase or local check-in is configured. Disables the Live tab if false. */
   liveCapable?: boolean;
   onSelectMode?: (mode: ModeSelection) => void;
+  onClearLiveData?: () => void;
+  clearingLiveData?: boolean;
 };
 
 export function StatsBar({
@@ -29,6 +31,8 @@ export function StatsBar({
   firebaseConnected = false,
   liveCapable = false,
   onSelectMode,
+  onClearLiveData,
+  clearingLiveData = false,
 }: StatsBarProps) {
   const showingDemo = dataMode === "demo";
   return (
@@ -108,6 +112,16 @@ export function StatsBar({
               className="rounded border border-[#2a3340] bg-[#12161d] px-2.5 py-1 text-[10px] font-medium text-[#94a3b8] transition hover:border-[#3d4f63] hover:text-[#e2e8f0]"
             >
               Burst
+            </button>
+          ) : onClearLiveData ? (
+            <button
+              type="button"
+              onClick={onClearLiveData}
+              disabled={clearingLiveData}
+              title="Delete all student check-ins and teacher roll calls for this drill"
+              className="rounded border border-rose-900/50 bg-rose-950/30 px-2.5 py-1 text-[10px] font-medium text-rose-300 transition hover:border-rose-800/60 hover:bg-rose-950/50 disabled:opacity-50"
+            >
+              {clearingLiveData ? "Clearing…" : "Clear all"}
             </button>
           ) : null}
           <button
