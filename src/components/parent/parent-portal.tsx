@@ -3,14 +3,21 @@
 import { useMemo, useState } from "react";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
-import { getRoomByNumber, type RoomStudent } from "@/lib/lahs-rooms";
+import type { RoomStudent } from "@/lib/lahs-rooms";
 import {
   demoParentById,
   findDemoParents,
   type DemoParent,
 } from "@/lib/demo/parents";
+import {
+  findLatestStudentEvent,
+  findTeacherRollCallForStudent,
+  resolveParentChildStatus,
+  roomContextForStudent,
+  type ParentChildStatus,
+} from "@/lib/parent/child-status";
 
-type ChildStatus = "safe" | "unsafe" | "unaccounted" | "unknown";
+type ChildStatus = ParentChildStatus;
 
 type ChildView = {
   student: RoomStudent;
@@ -57,28 +64,19 @@ function buildChildView(
   events: CheckInEvent[],
   unaccountedIds: ReadonlySet<string>,
 ): ChildView {
-  const latestEvent = events.find((event) => event.student.id === student.id) ?? null;
-
-  let status: ChildStatus = "unknown";
-  if (latestEvent?.status === "unsafe") status = "unsafe";
-  else if (latestEvent?.status === "safe") status = "safe";
-  else if (unaccountedIds.has(student.id)) status = "unaccounted";
-
-  const roomNumber = latestEvent?.roomNumber ?? null;
-  const room = roomNumber ? getRoomByNumber(roomNumber) : undefined;
+  const latestEvent = findLatestStudentEvent(events, student);
+  const status = resolveParentChildStatus(student, events, unaccountedIds);
+  const { roomLabel, roomBuilding, teacherName } = roomContextForStudent(student, latestEvent);
+  const teacherRollCallEvent = findTeacherRollCallForStudent(events, student);
 
   return {
     student,
     status,
     latestEvent,
-    roomLabel: roomNumber
-      ? room
-        ? `Room ${room.number} · ${room.label}`
-        : roomNumber
-      : null,
-    roomBuilding: room?.building ?? null,
-    teacherName: latestEvent?.teacherName ?? room?.teacher ?? null,
-    lastUpdate: latestEvent?.at ?? null,
+    roomLabel,
+    roomBuilding,
+    teacherName,
+    lastUpdate: latestEvent?.at ?? teacherRollCallEvent?.at ?? null,
     note: latestEvent?.note ?? null,
   };
 }

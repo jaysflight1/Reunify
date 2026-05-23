@@ -41,6 +41,15 @@ function rosterIdForName(name: string): string | null {
   return ALL_ROSTER_STUDENTS.find((s) => normalizeName(s.name) === key)?.id ?? null;
 }
 
+function rosterStudentIdForReport(report: StudentReport): string {
+  const studentId = report.studentId?.trim();
+  if (studentId) {
+    const byId = ALL_ROSTER_STUDENTS.find((s) => s.id === studentId);
+    if (byId) return byId.id;
+  }
+  return rosterIdForName(report.studentName) ?? studentId ?? report.studentUid;
+}
+
 function reportToEvent(report: StudentReport): CheckInEvent {
   const needHelp = report.status === "unsafe";
   const shooterNote = report.shooterNearby ? "Shooter actively nearby" : null;
@@ -49,7 +58,7 @@ function reportToEvent(report: StudentReport): CheckInEvent {
   return {
     id: report.id,
     student: {
-      id: report.studentUid,
+      id: rosterStudentIdForReport(report),
       name: report.studentName,
       grade: report.grade || "—",
     },

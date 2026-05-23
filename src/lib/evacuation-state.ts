@@ -68,14 +68,18 @@ export function buildAccountedRosterIds(
 ): Set<string> {
   const accounted = new Set<string>();
   const latestReports = latestStudentReports(studentReports);
-  const names = new Set(
-    latestReports.map((r) => normalizeName(r.studentName)).filter(Boolean),
-  );
 
-  for (const student of ALL_ROSTER_STUDENTS) {
-    if (names.has(normalizeName(student.name))) {
-      accounted.add(student.id);
+  for (const report of latestReports) {
+    const studentId = report.studentId.trim();
+    if (studentId) {
+      const byId = ALL_ROSTER_STUDENTS.find((s) => s.id === studentId);
+      if (byId) {
+        accounted.add(byId.id);
+        continue;
+      }
     }
+    const byName = rosterIdForStudentName(report.studentName);
+    if (byName) accounted.add(byName);
   }
 
   for (const tr of teacherReports) {
@@ -165,7 +169,10 @@ export function computeDashboardStats(
   const unsafeIds = new Set<string>();
 
   for (const report of latestReports) {
-    const id = rosterIdForStudentName(report.studentName);
+    const id =
+      (report.studentId.trim()
+        ? ALL_ROSTER_STUDENTS.find((s) => s.id === report.studentId.trim())?.id
+        : undefined) ?? rosterIdForStudentName(report.studentName);
     if (id && report.status === "unsafe") unsafeIds.add(id);
   }
 
@@ -182,7 +189,10 @@ export function computeDashboardStats(
   }
 
   for (const report of latestReports) {
-    const id = rosterIdForStudentName(report.studentName);
+    const id =
+      (report.studentId.trim()
+        ? ALL_ROSTER_STUDENTS.find((s) => s.id === report.studentId.trim())?.id
+        : undefined) ?? rosterIdForStudentName(report.studentName);
     if (id && report.status === "safe" && !unsafeIds.has(id)) safeIds.add(id);
   }
 

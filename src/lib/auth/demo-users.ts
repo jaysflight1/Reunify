@@ -47,7 +47,7 @@ export const DEMO_USERS: Record<string, AppUser> = {
     schoolId: DEMO_SCHOOL_ID,
     role: "parent",
     displayName: "Alyssa Wang Parent",
-    linkedStudentIds: ["student-alyssa-wang"],
+    linkedStudentIds: ["LAHS-1001"],
     isDemoUser: true,
     createdAt: NOW,
     updatedAt: NOW,
