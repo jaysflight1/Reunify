@@ -1,23 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CAMPUS_MAP,
-  EGRESS_PATHS,
-  interpolatePath,
-  RALLY_POINT,
-  type MapPoint,
-} from "@/lib/demo-data";
+import { CAMPUS_MAP, RALLY_POINT } from "@/lib/demo-data";
 import type { LahsRoom } from "@/lib/lahs-rooms";
 import type { RoomEvacStats } from "@/lib/room-accounting";
 import type { TeacherRoomSnapshot } from "@/lib/evacuation-state";
-import type { TrackedPhone } from "@/hooks/use-live-simulation";
 import { SchematicCampus } from "./schematic-campus";
 import { RoomLayer } from "./room-layer";
 import { RoomDetailPanel } from "./room-detail-panel";
 
 type CampusMapProps = {
-  phones: TrackedPhone[];
   unaccountedIds: ReadonlySet<string>;
   roomStatsMap: ReadonlyMap<string, RoomEvacStats>;
   teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>;
@@ -25,27 +17,7 @@ type CampusMapProps = {
 
 const VB = `0 0 ${CAMPUS_MAP.viewBox.w} ${CAMPUS_MAP.viewBox.h}`;
 
-function EgressDot({ x, y }: { x: number; y: number }) {
-  return (
-    <circle cx={x} cy={y} r={0.7} fill="#fbbf24" stroke="#0c0f13" strokeWidth={0.2} />
-  );
-}
-
-function PathLine({ points }: { points: MapPoint[] }) {
-  const d = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  return (
-    <path
-      d={d}
-      fill="none"
-      stroke="#f59e0b"
-      strokeWidth={0.4}
-      strokeOpacity={0.5}
-      strokeDasharray="1.5 1"
-    />
-  );
-}
-
-export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom }: CampusMapProps) {
+export function CampusMap({ unaccountedIds, roomStatsMap, teacherByRoom }: CampusMapProps) {
   const [selectedRoom, setSelectedRoom] = useState<LahsRoom | null>(null);
   const [showRoomNumbers, setShowRoomNumbers] = useState(true);
 
@@ -106,10 +78,6 @@ export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom 
               showLabels={showRoomNumbers}
             />
 
-            {EGRESS_PATHS.map((path) => (
-              <PathLine key={path.id} points={path.points} />
-            ))}
-
             <g>
               <circle
                 cx={RALLY_POINT.x}
@@ -131,12 +99,6 @@ export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom 
               </text>
             </g>
 
-            {phones.map((phone) => {
-              const path = EGRESS_PATHS.find((p) => p.id === phone.pathId);
-              if (!path) return null;
-              const pos = interpolatePath(path.points, phone.progress);
-              return <EgressDot key={phone.pathId} x={pos.x} y={pos.y} />;
-            })}
           </svg>
 
           {selectedRoom ? (

@@ -42,3 +42,9 @@ export function getClientFirestore(): Firestore {
 /** Active drill / evacuation session id */
 export const ACTIVE_DRILL_ID =
   process.env.NEXT_PUBLIC_FIREBASE_DRILL_ID ?? "active-drill";
+
+/** Sentinel room value when a student is safe but not on campus. */
+export const OFF_CAMPUS_ROOM = "off-campus";
+
+/** Sentinel when a student needs emergency help (no room/teacher). */
+export const NEED_HELP_ROOM = "need-help";

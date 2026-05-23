@@ -59,7 +59,6 @@ export function AdminDashboard() {
         <section className="flex min-h-[min(50vh,480px)] flex-col lg:col-span-8 lg:min-h-[calc(100vh-5.5rem)] xl:col-span-9">
           <div className="min-h-0 flex-1">
             <CampusMap
-              phones={live.phones}
               unaccountedIds={live.unaccountedIds}
               roomStatsMap={live.roomStatsMap}
               teacherByRoom={live.teacherByRoom}

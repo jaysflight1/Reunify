@@ -2,7 +2,7 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { StudentReport, TeacherRoomReport } from "./types";
 import { mapTeacherDoc } from "./teacher-reports";
-import { ACTIVE_DRILL_ID } from "./config";
+import { ACTIVE_DRILL_ID, NEED_HELP_ROOM, OFF_CAMPUS_ROOM } from "./config";
 
 function parseServiceAccount(): Record<string, unknown> | null {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -64,6 +64,8 @@ export async function fetchDrillReportsAdmin(
       studentId: data.studentId ?? "",
       grade: data.grade ?? "",
       status: data.status === "unsafe" ? "unsafe" : "safe",
+      offCampus: Boolean(data.offCampus) || data.roomNumber === OFF_CAMPUS_ROOM,
+      shooterNearby: Boolean(data.shooterNearby),
       roomNumber: data.roomNumber ?? "",
       teacherName: data.teacherName ?? "",
       location: data.location ?? null,

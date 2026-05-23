@@ -14,6 +14,8 @@ export type StudentReport = {
   studentId: string;
   grade: string;
   status: Status;
+  offCampus: boolean;
+  shooterNearby: boolean;
   roomNumber: string;
   teacherName: string;
   location: GeoLocation | null;
@@ -27,6 +29,8 @@ export type StudentReportInput = {
   studentId: string;
   grade: string;
   status: Status;
+  offCampus: boolean;
+  shooterNearby?: boolean;
   roomNumber: string;
   teacherName: string;
   location: GeoLocation | null;
