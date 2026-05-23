@@ -1,77 +1,120 @@
-# Reunify
+# Reunify 🔗
 
-AI-assisted school emergency accountability and reunification platform.
+> Built at **Synth Hacks** · Next.js · Firebase · Gemini AI · Twilio
 
-This repository currently contains the proof-of-concept Reunify app: a student
-check-in flow, a teacher roll-call flow, and a staff command center. The next
-implementation phases will expand it into the role-based product described in
-`/Users/jaylanroy/Desktop/reunify_plan.md` while preserving the working demo
-features already in this repo.
+**Reunify** is an AI-powered emergency student-family reunification platform. During school crises or lockdowns, it lets administrators track student check-in status in real time, helps parents locate their children, and gives responders a live operational dashboard — all from a single web app.
 
-## Routes
+***
 
-| Path | Audience |
-|------|----------|
-| `/` | Demo role chooser |
-| `/check-in` | Students - report safe/unsafe, room, teacher, GPS, and optional notes. No map or roster data. |
-| `/teacher` | Teachers - voice roll call or roster checkboxes. |
-| `/admin` | Staff - campus map, live feed, teacher reports, and unaccounted list. |
+## ✨ Features
 
-Planned Reunify routes include `/student`, `/parent`, and `/responder`.
+- **Multi-role dashboards** — Separate, purpose-built views for Students, Teachers, Parents, Responders, and Admins
+- **Real-time check-in** — Students check in via the `/check-in` flow; status updates propagate instantly via Firestore
+- **AI triage assistant** — Gemini 2.5 Flash Lite helps responders prioritize and answer parent queries intelligently
+- **SMS notifications** — Optional Twilio integration sends parents status updates without requiring a smartphone app
+- **Secure by default** — Granular Firestore security rules ensure each role only reads/writes data it owns
+- **Demo mode** — `ALLOW_DEMO_AUTH=true` lets you run the full app locally without a real Firebase project
 
-## Run locally
+***
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS v4 |
+| Database | Firestore (Firebase) |
+| Auth | Firebase Auth + Firebase Admin SDK |
+| AI | Google Gemini (`@google/genai`) |
+| SMS | Twilio (optional) |
+| Validation | Zod |
+
+***
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- A Firebase project with Firestore enabled
+- A Google AI Studio API key for Gemini
+- *(Optional)* A Twilio account for SMS
+
+### Installation
 
 ```bash
+git clone https://github.com/jaysflight1/synth-hacks.git
+cd synth-hacks
 npm install
-cp .env.local.example .env.local
-# Fill Firebase, Firebase Admin, and Gemini values as needed.
+```
+
+### Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in your credentials:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase client-side config (browser-safe) |
+| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Firebase Admin SDK credentials (server-only) |
+| `GEMINI_API_KEY` | Google AI Studio key |
+| `GEMINI_MODEL` | Model ID (default: `gemini-2.5-flash-lite`) |
+| `TWILIO_*` | Twilio credentials for SMS (optional) |
+| `ALLOW_DEMO_AUTH` | Set `true` to bypass real auth in development |
+| `NEXT_PUBLIC_APP_URL` | Base URL (default: `http://localhost:3000`) |
+
+### Running Locally
+
+```bash
 npm run dev
 ```
 
-Open:
+Open [http://localhost:3000](http://localhost:3000).
 
-```txt
-http://localhost:3000
-```
-
-Without Firebase environment variables, `/admin` runs in demo mode with
-simulated check-ins.
-
-## Environment
-
-Use `.env.example` as the canonical template for deployment and
-`.env.local.example` for local development. Do not commit `.env`, `.env.local`,
-service account JSON, private keys, or Vercel project files.
-
-## Firebase
-
-See [docs/FIREBASE.md](docs/FIREBASE.md) for Auth, Firestore rules, service
-account configuration, seeding the current room catalog, and indexes.
-
-The current proof of concept supports `FIREBASE_SERVICE_ACCOUNT_JSON`. New
-Reunify server code should prefer the split admin variables:
-
-```env
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=
-```
-
-## Gemini
-
-Future Reunify report parsing and broadcast generation will call Gemini only
-from server-side routes. Configure:
-
-```env
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash-lite
-```
-
-## Deploy
+### Seeding Data
 
 ```bash
-npx vercel
+npm run seed
 ```
 
-Add the same environment variables in the Vercel project settings for
-Development, Preview, and Production.
+### Deploying Firestore Rules
+
+```bash
+npm run firebase:deploy
+```
+
+***
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── admin/          # Admin dashboard (drill management, overview)
+│   ├── check-in/       # Student check-in flow
+│   ├── parent/         # Parent portal (find child, status updates)
+│   ├── responder/      # First responder live dashboard
+│   ├── student/        # Student self-service view
+│   ├── teacher/        # Teacher roster & accountability view
+│   └── api/            # Next.js API routes (AI, auth, notifications)
+├── components/         # Shared UI components
+├── hooks/              # Custom React hooks
+├── lib/                # Firebase client, admin SDK, Gemini client, utilities
+└── types/              # Shared TypeScript types
+```
+
+***
+
+## 🔒 Security
+
+Firestore security rules (`firestore.rules`) enforce role-based access control — students, teachers, parents, and responders each have narrowly scoped read/write permissions. A permissive dev ruleset (`firestore.rules.dev`) is provided for local development only; **never deploy it to production**.
+
+***
+
+## 📜 License
+
+This project was created for hackathon purposes. No license is currently specified — all rights reserved by the authors.
