@@ -9,6 +9,7 @@ import {
   DEMO_ROOM_44_ID,
   DEMO_SCHOOL_ID,
 } from "../src/lib/demo/constants";
+import { EXAMPLE_STUDENTS, exampleStudentByName } from "../src/lib/demo/example-students";
 import type { AppUser, UserRole } from "../src/types/user";
 import type {
   ClassGroup,
@@ -30,95 +31,30 @@ type SeedData = {
   studentStates: StudentIncidentState[];
 };
 
-const DEMO_NAMES = [
-  "Alyssa Wang",
-  "Lydia Chen",
-  "Ethan Brooks",
-  "Maya Singh",
-  "Jacob Lee",
-  "Priya Patel",
-  "Mateo Garcia",
-  "Jordan Kim",
-  "Emma Nguyen",
-  "Daniel Park",
-  "Noah Patel",
-  "Sophia Martinez",
-  "Lucas Brown",
-  "Isabella Wilson",
-  "Mason Nguyen",
-  "Mia Rivera",
-  "Logan Foster",
-  "Amelia Hayes",
-  "James Cohen",
-  "Harper Ward",
-  "Benjamin Ross",
-  "Evelyn Price",
-  "Henry Bell",
-  "Charlotte Murphy",
-  "William Cole",
-  "Ava Kim",
-  "Elijah Singh",
-  "Grace Lee",
-  "Leo Chen",
-  "Nora Garcia",
-  "Owen Patel",
-  "Chloe Wang",
-  "Aria Nguyen",
-  "Sam Rivera",
-  "Ruby Martinez",
-  "Julian Park",
-  "Sofia Brooks",
-  "Miles Cohen",
-  "Ella Brown",
-  "Kai Wilson",
-  "Riley Ward",
-  "Zoe Price",
-  "Theo Foster",
-  "Luna Hayes",
-  "Caleb Bell",
-  "Violet Murphy",
-  "Isaac Cole",
-  "Hazel Ross",
-  "Ryan Kim",
-  "Mila Singh",
-  "Adrian Garcia",
-  "Leah Patel",
-  "Finn Nguyen",
-  "Ivy Lee",
-  "Eli Martinez",
-  "Naomi Park",
-  "Jonah Chen",
-  "Maya Wang",
-  "Omar Rivera",
-  "Tessa Brooks",
-];
-
-function slugName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const [firstName = "", ...rest] = fullName.split(" ");
   return { firstName, lastName: rest.join(" ") };
 }
 
 function studentIdForName(name: string): string {
-  return `student-${slugName(name)}`;
+  const student = exampleStudentByName(name);
+  if (!student) throw new Error(`Unknown example student: ${name}`);
+  return student.id;
 }
 
-function makeStudent(fullName: string, index: number, classIds: string[]): Student {
-  const { firstName, lastName } = splitName(fullName);
+function makeStudent(example: (typeof EXAMPLE_STUDENTS)[number], classIds: string[]): Student {
+  const { firstName, lastName } = splitName(example.fullName);
   return {
-    id: studentIdForName(fullName),
+    id: example.id,
     schoolId: DEMO_SCHOOL_ID,
     firstName,
     lastName,
-    fullName,
-    grade: String(9 + (index % 4)),
+    fullName: example.fullName,
+    grade: example.grade,
     classIds,
     primaryClassId: classIds[0],
-    parentGuardianIds: index < 2 ? [DEMO_APP_USERS.parent] : [],
-    authorizedPickupGuardianIds: index < 2 ? [DEMO_APP_USERS.parent] : [],
+    parentGuardianIds: example.fullName === "Alyssa Wang" ? [DEMO_APP_USERS.parent] : [],
+    authorizedPickupGuardianIds: example.fullName === "Alyssa Wang" ? [DEMO_APP_USERS.parent] : [],
     createdAt: NOW,
     updatedAt: NOW,
   };
@@ -139,15 +75,15 @@ function makeUser(role: UserRole, displayName: string, extra: Partial<AppUser> =
 
 function buildSeedData(): SeedData {
   const classIds = ["class-47", "class-gym-a", "class-field-b", "class-cafeteria-c"];
-  const class47Ids = DEMO_NAMES.slice(0, 27).map(studentIdForName);
-  const gymClassIds = DEMO_NAMES.slice(27, 42).map(studentIdForName);
-  const fieldClassIds = DEMO_NAMES.slice(42, 52).map(studentIdForName);
-  const cafeteriaClassIds = DEMO_NAMES.slice(52).map(studentIdForName);
+  const class47Ids = EXAMPLE_STUDENTS.slice(0, 27).map((student) => student.id);
+  const gymClassIds = EXAMPLE_STUDENTS.slice(27, 42).map((student) => student.id);
+  const fieldClassIds = EXAMPLE_STUDENTS.slice(42, 52).map((student) => student.id);
+  const cafeteriaClassIds = EXAMPLE_STUDENTS.slice(52).map((student) => student.id);
 
-  const students = DEMO_NAMES.map((name, index) => {
+  const students = EXAMPLE_STUDENTS.map((student, index) => {
     const classId =
       index < 27 ? classIds[0]! : index < 42 ? classIds[1]! : index < 52 ? classIds[2]! : classIds[3]!;
-    return makeStudent(name, index, [classId]);
+    return makeStudent(student, [classId]);
   });
 
   const classes: ClassGroup[] = [

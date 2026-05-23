@@ -11,19 +11,7 @@ export function ResponderDashboard() {
   );
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
-      <header className="mb-4">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
-          Responder view
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-[#f8fafc]">
-          Factual incident snapshot
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[#94a3b8]">
-          This view summarizes reported student status and last-known locations. It does not provide tactical recommendations.
-        </p>
-      </header>
-
+    <div>
       <section className="grid gap-3 md:grid-cols-4">
         <Metric label="Unaccounted" value={live.missingStudents.length} tone="warning" />
         <Metric label="Needs help reports" value={unsafeReports.length} tone="critical" />
@@ -86,7 +74,7 @@ export function ResponderDashboard() {
           ) : null}
         </ul>
       </Panel>
-    </main>
+    </div>
   );
 }
 

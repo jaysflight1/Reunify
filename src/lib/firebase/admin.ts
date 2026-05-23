@@ -3,7 +3,7 @@ import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { StudentReport, TeacherRoomReport } from "./types";
 import { mapTeacherDoc } from "./teacher-reports";
-import { ACTIVE_DRILL_ID, NEED_HELP_ROOM, OFF_CAMPUS_ROOM } from "./config";
+import { ACTIVE_DRILL_ID, OFF_CAMPUS_ROOM } from "./config";
 
 function parseJsonServiceAccount(): ServiceAccount | null {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;

@@ -64,6 +64,7 @@ export function useAdminLiveData() {
     const base = {
       toggleLive: sim.toggleLive,
       seedBurst: sim.seedBurst,
+      phones: sim.phones,
       firebaseConnected: firebase.connected,
       firebaseError: firebase.error,
       firebaseSource: firebase.source,
@@ -129,9 +130,7 @@ export function useAdminLiveData() {
           roomNumber: roomNum,
           teacherName: snap?.report.teacherName ?? "—",
           status: "unsafe" as const,
-          at: snap
-            ? formatTime(new Date(snap.report.updatedAt))
-            : formatTime(new Date()),
+          at: snap ? formatTime(new Date(snap.report.updatedAt)) : sim.lastTick,
           note: "Teacher: not in class",
         };
       },
@@ -155,7 +154,7 @@ export function useAdminLiveData() {
           ? formatTime(new Date(firebase.reports[0].updatedAt))
           : firebase.teacherReports[0] != null
             ? formatTime(new Date(firebase.teacherReports[0].updatedAt))
-            : formatTime(new Date()),
+            : sim.lastTick,
       isLive: sim.isLive,
     };
   }, [firebaseEnabled, firebase, sim]);

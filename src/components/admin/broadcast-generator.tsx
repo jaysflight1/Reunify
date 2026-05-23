@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DEMO_APP_USERS, DEMO_BROADCAST_AUDIENCES, DEMO_INCIDENT_ID, DEMO_SCHOOL_ID } from "@/lib/demo/constants";
 import { DEMO_AUTH_HEADER, DEMO_USER_STORAGE_KEY } from "@/lib/auth/demo-users";
 import type { Broadcast, BroadcastAudience } from "@/types/incident";
@@ -10,16 +10,16 @@ type GenerateResponse = {
   error?: string;
 };
 
-function demoUserId(): string {
-  if (typeof window === "undefined") return DEMO_APP_USERS.admin;
-  return window.localStorage.getItem(DEMO_USER_STORAGE_KEY) ?? DEMO_APP_USERS.admin;
-}
-
 export function BroadcastGenerator() {
   const [audience, setAudience] = useState<BroadcastAudience>("parents");
   const [loading, setLoading] = useState(false);
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeUserId, setActiveUserId] = useState(DEMO_APP_USERS.admin);
+
+  useEffect(() => {
+    setActiveUserId(window.localStorage.getItem(DEMO_USER_STORAGE_KEY) ?? DEMO_APP_USERS.admin);
+  }, []);
 
   const generate = async () => {
     setLoading(true);
@@ -30,7 +30,7 @@ export function BroadcastGenerator() {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [DEMO_AUTH_HEADER]: demoUserId(),
+          [DEMO_AUTH_HEADER]: activeUserId,
         },
         body: JSON.stringify({
           schoolId: DEMO_SCHOOL_ID,

@@ -11,12 +11,32 @@ function normalizeName(name: string): string {
   return name.trim().toLowerCase();
 }
 
+function rosterIdForStudentName(name: string): string | null {
+  const key = normalizeName(name);
+  if (!key) return null;
+  const hit = ALL_ROSTER_STUDENTS.find((s) => normalizeName(s.name) === key);
+  return hit?.id ?? null;
+}
+
+function latestStudentReports(reports: readonly StudentReport[]): StudentReport[] {
+  const map = new Map<string, StudentReport>();
+  for (const report of reports) {
+    const key = report.studentId.trim() || normalizeName(report.studentName) || report.id;
+    const previous = map.get(key);
+    if (!previous || report.updatedAt > previous.updatedAt) {
+      map.set(key, report);
+    }
+  }
+  return [...map.values()];
+}
+
 function reportsToCheckIns(reports: readonly StudentReport[]): RoomCheckIn[] {
-  return reports
+  return latestStudentReports(reports)
     .filter((r) => !r.offCampus && r.roomNumber !== NEED_HELP_ROOM)
     .map((r) => ({
       key: `s-${r.id}`,
       roomNumber: r.roomNumber,
+      rosterStudentId: rosterIdForStudentName(r.studentName) ?? undefined,
       studentName: r.studentName,
       grade: r.grade || "—",
       status: r.status,
@@ -47,8 +67,9 @@ export function buildAccountedRosterIds(
   teacherReports: readonly TeacherRoomReport[],
 ): Set<string> {
   const accounted = new Set<string>();
+  const latestReports = latestStudentReports(studentReports);
   const names = new Set(
-    studentReports.map((r) => normalizeName(r.studentName)).filter(Boolean),
+    latestReports.map((r) => normalizeName(r.studentName)).filter(Boolean),
   );
 
   for (const student of ALL_ROSTER_STUDENTS) {
@@ -130,13 +151,6 @@ export function getTeacherSnapshot(
   return teacherByRoom.get(room.number) ?? null;
 }
 
-function rosterIdForStudentName(name: string): string | null {
-  const key = normalizeName(name);
-  if (!key) return null;
-  const hit = ALL_ROSTER_STUDENTS.find((s) => normalizeName(s.name) === key);
-  return hit?.id ?? null;
-}
-
 /**
  * Campus-wide safe / unsafe counts.
  * Teacher missing roster students count as unsafe (not in class).
@@ -147,9 +161,10 @@ export function computeDashboardStats(
   teacherReports: readonly TeacherRoomReport[],
 ): { safeCount: number; unsafeCount: number; missingCount: number } {
   const teacherByRoom = latestTeacherReportByRoom(teacherReports);
+  const latestReports = latestStudentReports(studentReports);
   const unsafeIds = new Set<string>();
 
-  for (const report of studentReports) {
+  for (const report of latestReports) {
     const id = rosterIdForStudentName(report.studentName);
     if (id && report.status === "unsafe") unsafeIds.add(id);
   }
@@ -166,12 +181,12 @@ export function computeDashboardStats(
     }
   }
 
-  for (const report of studentReports) {
+  for (const report of latestReports) {
     const id = rosterIdForStudentName(report.studentName);
     if (id && report.status === "safe" && !unsafeIds.has(id)) safeIds.add(id);
   }
 
-  const accountedIds = buildAccountedRosterIds(studentReports, teacherReports);
+  const accountedIds = buildAccountedRosterIds(latestReports, teacherReports);
   const missingCount = ALL_ROSTER_STUDENTS.filter((s) => !accountedIds.has(s.id)).length;
 
   return {

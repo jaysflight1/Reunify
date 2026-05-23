@@ -52,6 +52,7 @@ export type TeacherRoomReport = {
   /** Names from voice that didn't match roster (staff follow-up). */
   unmatchedMissing: string[];
   allAccounted: boolean;
+  note: string | null;
   transcript: string | null;
   inputMode: TeacherReportInputMode;
   createdAt: number;
@@ -66,6 +67,7 @@ export type TeacherReportSubmit = {
   missingIds: string[];
   unmatchedMissing?: string[];
   allAccounted: boolean;
+  note?: string | null;
   transcript?: string | null;
   inputMode: TeacherReportInputMode;
 };

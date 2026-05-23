@@ -218,8 +218,13 @@ const wings: WingGridSpec[] = [
 
 const specials: LahsRoom[] = [
   buildSingleRoom("library", "Library", { x: 6, y: 68, w: 22, h: 12 }, 10),
-  buildSingleRoom("theatre", "Eagle Theatre", { x: 4, y: 52, w: 18, h: 12 }, 12),
-  buildSingleRoom("student-services", "Student Services", { x: 104, y: 78, w: 28, h: 10 }, 10),
+  buildSingleRoom("theatre", "Eagle Theater", { x: 4, y: 52, w: 18, h: 12 }, 12),
+  buildSingleRoom(
+    "student-services",
+    "Student Services Building",
+    { x: 104, y: 78, w: 28, h: 10 },
+    10,
+  ),
 ];
 
 export const LAHS_ROOMS: LahsRoom[] = [

@@ -38,18 +38,8 @@ export function ParentPortal() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
-      <section className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
-          Parent portal
-        </p>
-        <h1 className="mt-1 text-xl font-semibold text-[#f8fafc]">Child status</h1>
-        <p className="mt-2 text-sm text-[#94a3b8]">
-          Parent view only shows your linked child and parent-safe school messages.
-        </p>
-      </section>
-
-      <div className="mt-4 grid gap-3">
+    <div>
+      <div className="grid gap-3">
         {data?.children.map((child) => (
           <article key={child.studentId} className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
             <div className="flex items-start justify-between gap-3">
@@ -111,6 +101,6 @@ export function ParentPortal() {
       ) : null}
 
       {error ? <p className="mt-4 text-sm text-rose-400">{error}</p> : null}
-    </main>
+    </div>
   );
 }

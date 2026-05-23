@@ -32,6 +32,7 @@ export function RoomLayer({
         const cx = room.x + room.w / 2;
         const cy = room.y + room.h / 2;
         const fontSize = Math.min(room.w * 0.42, 3.2);
+        const roomSummary = `${room.label} · ${room.teacher} · ${missing.length} roster missing · ${stats.checkIns.length} checked in here`;
 
         return (
           <g key={room.id}>
@@ -46,12 +47,8 @@ export function RoomLayer({
               strokeWidth={isSelected ? 0.5 : 0.25}
               className="cursor-pointer hover:stroke-[#e2e8f0] hover:[stroke-width:0.4]"
               onClick={() => onSelectRoom(room)}
-            >
-              <title>
-                {room.label} · {room.teacher} · {missing.length} roster missing ·{" "}
-                {stats.checkIns.length} checked in here
-              </title>
-            </rect>
+              aria-label={roomSummary}
+            />
             {showLabels && room.w >= 2.5 ? (
               <text
                 x={cx}

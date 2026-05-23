@@ -66,6 +66,18 @@ function buildAlerts(records: AdminStudentRecord[], missingCount: number): Admin
   return alerts;
 }
 
+function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentRecord[] {
+  const byId = new Map<string, AdminStudentRecord>();
+
+  for (const record of records) {
+    if (!byId.has(record.id)) {
+      byId.set(record.id, record);
+    }
+  }
+
+  return [...byId.values()];
+}
+
 export function AdminDashboard() {
   const live = useAdminLiveData();
   const firebaseOn = isFirebaseConfigured();
@@ -73,7 +85,8 @@ export function AdminDashboard() {
 
   const studentRecords = useMemo(() => {
     const fromEvents = live.events.map(eventToRecord);
-    const eventIds = new Set(fromEvents.map((record) => record.id));
+    const latestFromEvents = latestRecordsByStudent(fromEvents);
+    const eventIds = new Set(latestFromEvents.map((record) => record.id));
     const missing = live.missingStudents
       .filter((student) => !eventIds.has(student.id))
       .map(
@@ -84,7 +97,7 @@ export function AdminDashboard() {
           status: "unaccounted",
         }),
       );
-    return [...fromEvents, ...missing];
+    return [...latestFromEvents, ...missing];
   }, [live.events, live.missingStudents]);
 
   const alerts = useMemo(
@@ -138,6 +151,7 @@ export function AdminDashboard() {
         <section className="flex min-h-[min(50vh,480px)] flex-col lg:col-span-8 lg:min-h-[calc(100vh-5.5rem)] xl:col-span-9">
           <div className="min-h-0 flex-1">
             <CampusMap
+              phones={live.phones}
               unaccountedIds={live.unaccountedIds}
               roomStatsMap={live.roomStatsMap}
               teacherByRoom={live.teacherByRoom}

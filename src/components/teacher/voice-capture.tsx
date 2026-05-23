@@ -6,6 +6,11 @@ type VoiceCaptureProps = {
   liveText: string;
   onToggleListen: () => void;
   onClear: () => void;
+  idleText?: string;
+  unsupportedText?: string;
+  transcriptPlaceholder?: string;
+  editable?: boolean;
+  onLiveTextChange?: (value: string) => void;
 };
 
 export function VoiceCapture({
@@ -14,6 +19,11 @@ export function VoiceCapture({
   liveText,
   onToggleListen,
   onClear,
+  idleText = "Tap and say your room + who’s missing",
+  unsupportedText = "Voice not supported in this browser — use roster checkboxes",
+  transcriptPlaceholder = "Example: “I’m in room 903, I have everyone but John Smith and Maria Garcia.”",
+  editable = false,
+  onLiveTextChange,
 }: VoiceCaptureProps) {
   return (
     <div className="flex flex-col items-center">
@@ -47,8 +57,8 @@ export function VoiceCapture({
         {supported
           ? listening
             ? "Listening… tap to stop"
-            : "Tap and say your room + who’s missing"
-          : "Voice not supported in this browser — use roster checkboxes"}
+            : idleText
+          : unsupportedText}
       </p>
 
       <div className="mt-4 w-full rounded-2xl border border-[#232a35] bg-[#0a0d11] px-4 py-3">
@@ -66,14 +76,22 @@ export function VoiceCapture({
             </button>
           ) : null}
         </div>
-        <p
-          className={`mt-2 min-h-[4.5rem] text-sm leading-relaxed ${
-            liveText ? "text-[#f1f5f9]" : "text-[#475569]"
-          }`}
-        >
-          {liveText ||
-            "Example: “I’m in room 903, I have everyone but John Smith and Maria Garcia.”"}
-        </p>
+        {editable ? (
+          <textarea
+            value={liveText}
+            onChange={(event) => onLiveTextChange?.(event.target.value)}
+            className="mt-2 min-h-[4.5rem] w-full resize-none bg-transparent text-sm leading-relaxed text-[#f1f5f9] outline-none placeholder:text-[#475569]"
+            placeholder={transcriptPlaceholder}
+          />
+        ) : (
+          <p
+            className={`mt-2 min-h-[4.5rem] text-sm leading-relaxed ${
+              liveText ? "text-[#f1f5f9]" : "text-[#475569]"
+            }`}
+          >
+            {liveText || transcriptPlaceholder}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -15,8 +15,6 @@ type EmergencyHelpPanelProps = {
   onShooterNearbyChange: (value: boolean) => void;
   locStatus: "idle" | "loading" | "ok" | "denied";
   onCaptureLocation: () => void;
-  note: string;
-  onNoteChange: (value: string) => void;
 };
 
 export function EmergencyHelpPanel({
@@ -24,8 +22,6 @@ export function EmergencyHelpPanel({
   onShooterNearbyChange,
   locStatus,
   onCaptureLocation,
-  note,
-  onNoteChange,
 }: EmergencyHelpPanelProps) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4">
@@ -77,18 +73,6 @@ export function EmergencyHelpPanel({
           ))}
         </ul>
       </div>
-
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#64748b]">
-          Anything else staff should know (optional)
-        </span>
-        <textarea
-          className="w-full resize-none rounded-lg border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc] outline-none focus:border-[#475569] min-h-[64px]"
-          value={note}
-          onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Injured, trapped, with others…"
-        />
-      </label>
     </div>
   );
 }

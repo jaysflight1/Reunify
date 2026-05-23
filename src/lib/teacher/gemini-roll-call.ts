@@ -10,6 +10,7 @@ const GeminiRollCallSchema = z.object({
   allAccounted: z.boolean(),
   missingStudentIds: z.array(z.string()),
   unmatchedNames: z.array(z.string()),
+  notes: z.string().nullable().optional(),
   confidence: z.enum(["high", "medium", "low"]),
   summary: z.string(),
 });
@@ -82,6 +83,7 @@ Rules:
 - missingStudentIds: use ONLY ids from the roster list for students who are missing / not accounted for.
 - If everyone is present/accounted, set allAccounted true and missingStudentIds [].
 - unmatchedNames: names mentioned as missing that do not match any roster id.
+- notes: important staff-facing details that do not fit another field, such as injuries, blocked exits, medical needs, smoke, threats, extra people, or evacuation problems. Use null if no extra notes.
 - confidence: high if intent is clear, low if garbled or ambiguous.
 - summary: one short line for staff UI (include room if spoken).
 
@@ -91,6 +93,7 @@ Return JSON matching:
   "allAccounted": boolean,
   "missingStudentIds": string[],
   "unmatchedNames": string[],
+  "notes": string | null,
   "confidence": "high" | "medium" | "low",
   "summary": string
 }`;
@@ -138,6 +141,7 @@ function normalizeGeminiRaw(
     allAccounted: Boolean(raw.allAccounted),
     missingStudentIds,
     unmatchedNames: (raw.unmatchedNames ?? []).map((n) => String(n).trim()).filter(Boolean),
+    notes: raw.notes?.trim() || null,
     confidence,
     summary: String(raw.summary ?? "").trim() || "Parsed roll call",
   };
@@ -156,6 +160,8 @@ export function yapFromGemini(
   if (!room) {
     return {
       selectedRoomNumber,
+      spokenTeacherName: null,
+      teacherMatchedRoomNumber: null,
       spokenRoomNumber,
       effectiveRoomNumber,
       room: null,
@@ -163,6 +169,7 @@ export function yapFromGemini(
       missingIds: [],
       unmatchedMissing: raw.unmatchedNames,
       allAccounted: false,
+      notes: raw.notes ?? null,
       confidence: "low",
       summary: spokenRoomNumber
         ? `Room ${spokenRoomNumber} is not in the catalog.`
@@ -181,6 +188,8 @@ export function yapFromGemini(
 
   return {
     selectedRoomNumber,
+    spokenTeacherName: null,
+    teacherMatchedRoomNumber: null,
     spokenRoomNumber,
     effectiveRoomNumber,
     room,
@@ -188,6 +197,7 @@ export function yapFromGemini(
     missingIds,
     unmatchedMissing: raw.unmatchedNames,
     allAccounted: raw.allAccounted && missingIds.length === 0 && raw.unmatchedNames.length === 0,
+    notes: raw.notes ?? null,
     confidence: raw.confidence,
     summary: raw.summary || `${roomLabel} · ${missingIds.length} missing`,
   };

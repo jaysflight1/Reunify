@@ -10,7 +10,7 @@ type UseGeminiVoiceParseArgs = {
   enabled: boolean;
   transcript: string;
   listening: boolean;
-  selectedRoomNumber: string;
+  selectedRoomNumber?: string;
   roster: RoomStudent[];
 };
 

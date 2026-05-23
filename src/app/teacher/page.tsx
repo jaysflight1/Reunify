@@ -1,5 +1,4 @@
 import { TeacherCheckIn } from "@/components/teacher/teacher-check-in";
-import { TeacherReportForm } from "@/components/teacher/teacher-report-form";
 
 export default function TeacherPage() {
   return (
@@ -14,8 +13,7 @@ export default function TeacherPage() {
         </p>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6 pb-12">
-        <TeacherReportForm />
+      <main className="mx-auto max-w-md px-4 py-6 pb-12">
         <TeacherCheckIn />
       </main>
     </div>

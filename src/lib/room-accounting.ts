@@ -6,6 +6,7 @@ import type { Status } from "@/lib/demo-data";
 export type RoomCheckIn = {
   key: string;
   roomNumber: string;
+  rosterStudentId?: string;
   studentName: string;
   grade: string;
   status: Status;

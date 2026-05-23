@@ -32,3 +32,22 @@ export function fallbackRooms(): FirestoreRoom[] {
     teacher: r.teacher,
   }));
 }
+
+export function mergeRoomsWithFallback(remoteRooms: FirestoreRoom[]): FirestoreRoom[] {
+  const byNumber = new Map<string, FirestoreRoom>();
+  for (const room of fallbackRooms()) {
+    byNumber.set(room.number, room);
+  }
+  for (const room of remoteRooms) {
+    const local = byNumber.get(room.number);
+    byNumber.set(room.number, {
+      ...room,
+      label: local?.label ?? room.label,
+      building: local?.building ?? room.building,
+      teacher: room.teacher || local?.teacher || "",
+    });
+  }
+  return [...byNumber.values()].sort((a, b) =>
+    a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: "base" }),
+  );
+}

@@ -27,29 +27,27 @@ export async function POST(request: Request) {
   if (!transcript) {
     return NextResponse.json({ error: "transcript is required" }, { status: 400 });
   }
-  if (!selectedRoomNumber) {
-    return NextResponse.json({ error: "selectedRoomNumber is required" }, { status: 400 });
-  }
-
-  const room = getRoomByNumber(selectedRoomNumber);
+  const preliminary = parseTeacherYap(transcript, selectedRoomNumber);
+  const parserRoomNumber = preliminary.effectiveRoomNumber || selectedRoomNumber;
+  const room = parserRoomNumber ? getRoomByNumber(parserRoomNumber) : null;
   const roster = room?.roster.map((s) => ({ id: s.id, name: s.name })) ?? [];
 
-  if (!isGeminiConfigured()) {
+  if (!isGeminiConfigured() || !parserRoomNumber) {
     return NextResponse.json({
       source: "regex" as const,
-      result: parseTeacherYap(transcript, selectedRoomNumber),
+      result: preliminary,
     });
   }
 
   try {
     let raw = await parseRollCallWithGemini({
       transcript,
-      selectedRoomNumber,
+      selectedRoomNumber: parserRoomNumber,
       roster,
     });
 
-    const effectiveRoom = raw.spokenRoomNumber ?? selectedRoomNumber;
-    if (effectiveRoom !== selectedRoomNumber) {
+    const effectiveRoom = raw.spokenRoomNumber ?? parserRoomNumber;
+    if (effectiveRoom !== parserRoomNumber) {
       const spokenMeta = getRoomByNumber(effectiveRoom);
       if (spokenMeta && spokenMeta.roster.length > 0) {
         raw = await parseRollCallWithGemini({
@@ -62,13 +60,19 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       source: "gemini" as const,
-      result: yapFromGemini(raw, selectedRoomNumber),
+      result: {
+        ...yapFromGemini(raw, parserRoomNumber),
+        selectedRoomNumber,
+        spokenTeacherName: preliminary.spokenTeacherName,
+        teacherMatchedRoomNumber: preliminary.teacherMatchedRoomNumber,
+        notes: raw.notes?.trim() || preliminary.notes,
+      },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Gemini parse failed";
     return NextResponse.json({
       source: "regex" as const,
-      result: parseTeacherYap(transcript, selectedRoomNumber),
+      result: preliminary,
       warning: message,
     });
   }

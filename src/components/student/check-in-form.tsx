@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Status } from "@/lib/demo-data";
+import { EXAMPLE_STUDENTS, type ExampleStudent } from "@/lib/demo/example-students";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { ensureStudentAuth, submitStudentReport } from "@/lib/firebase/reports";
-import { fetchRoomsFromFirestore, fallbackRooms, type FirestoreRoom } from "@/lib/firebase/rooms";
+import {
+  fetchRoomsFromFirestore,
+  fallbackRooms,
+  mergeRoomsWithFallback,
+  type FirestoreRoom,
+} from "@/lib/firebase/rooms";
 import type { GeoLocation } from "@/lib/firebase/types";
-import { teacherForRoomOption } from "@/lib/lahs-rooms/room-options";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { EmergencyHelpPanel } from "@/components/student/emergency-help-panel";
 import { LocationSharedStatus } from "@/components/student/location-shared-status";
 import { Simulated911Button } from "@/components/student/simulated-911-button";
+import { VoiceCapture } from "@/components/teacher/voice-capture";
 
 type FormState = {
   studentName: string;
@@ -22,19 +29,38 @@ type FormState = {
   note: string;
 };
 
-const GRADES = ["9", "10", "11", "12"];
+type StudentTranscriptParseResult = {
+  source: "gemini" | "regex";
+  warning?: string;
+  result: {
+    studentId: string | null;
+    studentName: string | null;
+    status: "safe" | "unsafe" | "unknown";
+    offCampus: boolean | null;
+    roomNumber: string | null;
+    teacherName: string | null;
+    shooterNearby: boolean | null;
+    note: string | null;
+    confidence: number;
+  };
+};
 
 export function CheckInForm() {
+  const speech = useSpeechRecognition();
   const [rooms, setRooms] = useState<FirestoreRoom[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
+  const [identityQuery, setIdentityQuery] = useState("");
+  const [identityFocused, setIdentityFocused] = useState(false);
+  const [roomQuery, setRoomQuery] = useState("");
+  const [roomFocused, setRoomFocused] = useState(false);
   const [form, setForm] = useState<FormState>({
     studentName: "",
     studentId: "",
-    grade: "10",
+    grade: "",
     status: "safe",
     offCampus: false,
-    roomNumber: "408",
-    teacherName: teacherForRoomOption("408"),
+    roomNumber: "",
+    teacherName: "",
     note: "",
   });
   const [shooterNearby, setShooterNearby] = useState(false);
@@ -43,12 +69,129 @@ export function CheckInForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parseStatus, setParseStatus] = useState<"idle" | "parsing" | "applied">("idle");
+  const [parseWarning, setParseWarning] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
   const firebaseReady = isFirebaseConfigured();
   const onCampus = form.status === "safe" && !form.offCampus;
   const needHelp = form.status === "unsafe";
   const needsRoom = onCampus;
+  const identityMatches = useMemo(() => {
+    const query = identityQuery.trim().toLowerCase();
+    const matches = query
+      ? EXAMPLE_STUDENTS.filter((student) => {
+          const searchable = `${student.fullName} ${student.id}`.toLowerCase();
+          return searchable.includes(query);
+        })
+      : EXAMPLE_STUDENTS;
+    return matches.slice(0, 8);
+  }, [identityQuery]);
+  const roomOptions = useMemo(
+    () =>
+      [...rooms].sort((a, b) =>
+        a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: "base" }),
+      ),
+    [rooms],
+  );
+  const roomMatches = useMemo(() => {
+    const query = roomQuery.trim().toLowerCase();
+    const matches = query
+      ? roomOptions.filter((room) => {
+          const searchable = `${room.number} ${room.label} ${room.teacher} ${room.building}`.toLowerCase();
+          return searchable.includes(query);
+        })
+      : roomOptions;
+    return matches;
+  }, [roomOptions, roomQuery]);
+  const roomDisplayLabel = (room: FirestoreRoom) => room.label;
+
+  const selectIdentity = (student: ExampleStudent) => {
+    setForm((f) => ({
+      ...f,
+      studentName: student.fullName,
+      studentId: student.id,
+      grade: student.grade,
+    }));
+    setIdentityQuery(`${student.fullName} (${student.id})`);
+    setIdentityFocused(false);
+  };
+
+  const onIdentityChange = (value: string) => {
+    setIdentityQuery(value);
+    setIdentityFocused(true);
+    setForm((f) => ({
+      ...f,
+      studentName: "",
+      studentId: "",
+      grade: "",
+    }));
+  };
+
+  const selectRoom = (room: FirestoreRoom) => {
+    setRoomQuery(roomDisplayLabel(room));
+    setRoomFocused(false);
+    setForm((f) => ({ ...f, roomNumber: room.number, teacherName: room.teacher }));
+  };
+
+  const onRoomChange = (value: string) => {
+    setRoomQuery(value);
+    setRoomFocused(true);
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = roomOptions.find((room) => {
+      const visibleLabel = roomDisplayLabel(room).toLowerCase();
+      const buildingLabel = `${room.label} · ${room.building}`.toLowerCase();
+      const teacherName = room.teacher.toLowerCase();
+      return (
+        room.number.toLowerCase() === normalized ||
+        room.label.toLowerCase() === normalized ||
+        teacherName === normalized ||
+        visibleLabel === normalized ||
+        buildingLabel === normalized
+      );
+    });
+    setForm((f) => ({
+      ...f,
+      roomNumber: exactMatch?.number ?? "",
+      teacherName: exactMatch?.teacher ?? "",
+    }));
+  };
+
+  const applyParsedTranscript = useCallback(
+    (parsed: StudentTranscriptParseResult["result"]) => {
+      const student = parsed.studentId
+        ? EXAMPLE_STUDENTS.find((candidate) => candidate.id === parsed.studentId)
+        : null;
+      const room = parsed.roomNumber
+        ? roomOptions.find((candidate) => candidate.number === parsed.roomNumber)
+        : null;
+      const selectedRoom = room ?? roomOptions.find((candidate) => candidate.teacher === parsed.teacherName);
+
+      if (student) {
+        setIdentityQuery(`${student.fullName} (${student.id})`);
+      }
+      if (selectedRoom) {
+        setRoomQuery(roomDisplayLabel(selectedRoom));
+      }
+
+      setForm((f) => ({
+        ...f,
+        studentName: student?.fullName ?? f.studentName,
+        studentId: student?.id ?? f.studentId,
+        grade: student?.grade ?? f.grade,
+        status:
+          parsed.status === "safe" || parsed.status === "unsafe" ? parsed.status : f.status,
+        offCampus: parsed.offCampus ?? f.offCampus,
+        roomNumber: selectedRoom?.number ?? f.roomNumber,
+        teacherName: selectedRoom?.teacher ?? f.teacherName,
+        note: f.note || parsed.note || "",
+      }));
+      if (parsed.shooterNearby != null) {
+        setShooterNearby(parsed.shooterNearby);
+      }
+    },
+    [roomOptions],
+  );
 
   const loadRooms = useCallback(async () => {
     const local = fallbackRooms();
@@ -61,13 +204,15 @@ export function CheckInForm() {
       await ensureStudentAuth();
       setAuthReady(true);
       const remote = await fetchRoomsFromFirestore();
-      const list = remote.length > 0 ? remote : local;
+      const list = remote.length > 0 ? mergeRoomsWithFallback(remote) : local;
       setRooms(list);
-      setForm((f) => ({
-        ...f,
-        roomNumber: list[0]?.number ?? f.roomNumber,
-        teacherName: list[0]?.teacher ?? teacherForRoomOption(list[0]?.number ?? "408"),
-      }));
+      setForm((f) => {
+        return {
+          ...f,
+          roomNumber: f.roomNumber,
+          teacherName: f.teacherName,
+        };
+      });
     } catch (err) {
       setRooms(local);
       setAuthReady(false);
@@ -82,14 +227,43 @@ export function CheckInForm() {
   }, [loadRooms]);
 
   useEffect(() => {
-    if (!onCampus) return;
-    const room = rooms.find((r) => r.number === form.roomNumber);
-    if (room) {
-      setForm((f) => ({ ...f, teacherName: room.teacher }));
-    } else if (form.roomNumber) {
-      setForm((f) => ({ ...f, teacherName: teacherForRoomOption(form.roomNumber) }));
+    const transcript = speech.liveText.trim();
+    if (speech.listening || transcript.length < 8) {
+      setParseStatus("idle");
+      return;
     }
-  }, [form.roomNumber, rooms, onCampus]);
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setParseStatus("parsing");
+      setParseWarning(null);
+      void (async () => {
+        try {
+          const response = await fetch("/api/student/parse-transcript", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript }),
+            signal: controller.signal,
+          });
+          const json = (await response.json()) as StudentTranscriptParseResult & { error?: string };
+          if (!response.ok) throw new Error(json.error ?? "Could not parse transcript.");
+          if (controller.signal.aborted) return;
+          applyParsedTranscript(json.result);
+          setParseWarning(json.warning ?? null);
+          setParseStatus("applied");
+        } catch (err) {
+          if (controller.signal.aborted) return;
+          setParseWarning(err instanceof Error ? err.message : "Could not parse transcript.");
+          setParseStatus("idle");
+        }
+      })();
+    }, 700);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [applyParsedTranscript, speech.listening, speech.liveText]);
 
   const captureLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -115,8 +289,8 @@ export function CheckInForm() {
     e.preventDefault();
     setError(null);
 
-    if (!form.studentName.trim()) {
-      setError("Enter your name.");
+    if (!form.studentId || !form.studentName) {
+      setError("Select your name or student ID from the list.");
       return;
     }
     if (!firebaseReady) {
@@ -130,6 +304,7 @@ export function CheckInForm() {
 
     setSubmitting(true);
     try {
+      const voiceNote = speech.liveText.trim();
       await submitStudentReport({
         studentName: form.studentName,
         studentId: form.studentId,
@@ -140,9 +315,10 @@ export function CheckInForm() {
         roomNumber: needsRoom ? form.roomNumber : "",
         teacherName: needsRoom ? form.teacherName : "",
         location,
-        note: form.note || undefined,
+        note: form.note || voiceNote || undefined,
       });
       setSubmitted(true);
+      speech.stop();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit. Try again.");
     } finally {
@@ -198,39 +374,82 @@ export function CheckInForm() {
         </p>
       ) : null}
 
-      <Field label="Your name" required>
-        <input
-          className={inputClass}
-          value={form.studentName}
-          onChange={(e) => setForm((f) => ({ ...f, studentName: e.target.value }))}
-          placeholder="First Last"
-          autoComplete="name"
-        />
-      </Field>
+      <section className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
+          AI Autofill
+        </p>
+        <div className="mt-3">
+          <VoiceCapture
+            supported={speech.supported}
+            listening={speech.listening}
+            liveText={speech.liveText}
+            onToggleListen={speech.toggle}
+            onClear={speech.reset}
+            editable
+            onLiveTextChange={speech.setTranscript}
+            idleText="Tap and say anything staff should know"
+            unsupportedText="Voice not supported in this browser"
+            transcriptPlaceholder="Example: I'm Lydia Chen in room 602 with Ms. Rivera and I am safe."
+          />
+        </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Student ID">
+        {parseStatus !== "idle" || parseWarning ? (
+          <p className="mt-3 text-xs text-[#64748b]">
+            {parseStatus === "parsing"
+              ? "AI is reading the transcript..."
+              : parseWarning
+                ? `Transcript parser used fallback: ${parseWarning}`
+                : "Transcript details applied to the form."}
+          </p>
+        ) : null}
+      </section>
+
+      <Field label="Name / Student ID" required>
+        <div className="relative">
           <input
             className={inputClass}
-            value={form.studentId}
-            onChange={(e) => setForm((f) => ({ ...f, studentId: e.target.value }))}
-            placeholder="School ID"
+            value={identityQuery}
+            onChange={(e) => onIdentityChange(e.target.value)}
+            onFocus={() => setIdentityFocused(true)}
+            onBlur={() => setIdentityFocused(false)}
+            placeholder="Type your name or student ID"
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={identityFocused}
+            aria-controls="student-identity-options"
           />
-        </Field>
-        <Field label="Grade" required>
-          <select
-            className={inputClass}
-            value={form.grade}
-            onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
-          >
-            {GRADES.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+          {identityFocused ? (
+            <div
+              id="student-identity-options"
+              className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-[#2a3340] bg-[#0c0f13] shadow-xl shadow-black/30"
+              role="listbox"
+            >
+              {identityMatches.length > 0 ? (
+                identityMatches.map((student) => (
+                  <button
+                    key={student.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectIdentity(student)}
+                    className="flex w-full items-center justify-between gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#12161d]"
+                    role="option"
+                    aria-selected={form.studentId === student.id}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                        {student.fullName}
+                      </span>
+                      <span className="block text-xs text-[#64748b]">{student.id}</span>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-3 text-sm text-[#94a3b8]">No matching students</p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </Field>
 
       <Field label="How are you?" required>
         <div className="grid grid-cols-2 gap-2">
@@ -273,34 +492,56 @@ export function CheckInForm() {
           onShooterNearbyChange={setShooterNearby}
           locStatus={locStatus}
           onCaptureLocation={captureLocation}
-          note={form.note}
-          onNoteChange={(note) => setForm((f) => ({ ...f, note }))}
         />
       ) : null}
 
       {needsRoom ? (
         <>
-          <Field label="Room you're in" required>
-            <select
-              className={inputClass}
-              value={form.roomNumber}
-              disabled={roomsLoading}
-              onChange={(e) => setForm((f) => ({ ...f, roomNumber: e.target.value }))}
-            >
-              {rooms.map((r) => (
-                <option key={r.number} value={r.number}>
-                  {r.label} · {r.building}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Teacher with you" required>
-            <input
-              className={inputClass}
-              value={form.teacherName}
-              onChange={(e) => setForm((f) => ({ ...f, teacherName: e.target.value }))}
-            />
+          <Field label="Room" required>
+            <div className="relative">
+              <input
+                className={inputClass}
+                value={roomQuery}
+                disabled={roomsLoading}
+                onChange={(e) => onRoomChange(e.target.value)}
+                onFocus={() => setRoomFocused(true)}
+                onBlur={() => setRoomFocused(false)}
+                placeholder={roomsLoading ? "Loading rooms..." : "Type room number"}
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={roomFocused}
+                aria-controls="room-options"
+              />
+              {roomFocused ? (
+                <div
+                  id="room-options"
+                  className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-[#2a3340] bg-[#0c0f13] shadow-xl shadow-black/30"
+                  role="listbox"
+                >
+                  {roomMatches.length > 0 ? (
+                    roomMatches.map((room) => (
+                      <button
+                        key={room.number}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectRoom(room)}
+                        className="flex w-full items-center justify-between gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#12161d]"
+                        role="option"
+                        aria-selected={form.roomNumber === room.number}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                            {room.label}
+                          </span>
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-3 py-3 text-sm text-[#94a3b8]">No matching rooms</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </Field>
         </>
       ) : null}
@@ -308,6 +549,15 @@ export function CheckInForm() {
       {!needHelp ? (
         <LocationSharedStatus locStatus={locStatus} onCaptureLocation={captureLocation} />
       ) : null}
+
+      <Field label="Anything else staff should know">
+        <textarea
+          className="min-h-[80px] w-full resize-none rounded-lg border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc] outline-none focus:border-[#475569]"
+          value={form.note}
+          onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+          placeholder="Injured, trapped, with others, or any detail staff should see..."
+        />
+      </Field>
 
       {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 

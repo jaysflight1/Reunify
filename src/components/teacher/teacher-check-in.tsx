@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { submitTeacherRoomReport } from "@/lib/firebase/teacher-reports";
 import { LAHS_ROOMS, getRoomByNumber, type LahsRoom } from "@/lib/lahs-rooms";
@@ -16,24 +16,64 @@ const ROOM_OPTIONS = [...LAHS_ROOMS]
   .filter((r) => r.roster.length > 0)
   .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
 
+type TeacherOption = {
+  key: string;
+  teacher: string;
+  roomNumber: string;
+  roomLabel: string;
+};
+
 export function TeacherCheckIn() {
   const firebaseReady = isFirebaseConfigured();
   const speech = useSpeechRecognition();
 
   const [mode, setMode] = useState<InputMode>("voice");
-  const [roomNumber, setRoomNumber] = useState(ROOM_OPTIONS[0]?.number ?? "408");
-  const [teacherName, setTeacherName] = useState(ROOM_OPTIONS[0]?.teacher ?? "");
+  const [roomNumber, setRoomNumber] = useState("");
+  const [teacherName, setTeacherName] = useState("");
+  const [teacherQuery, setTeacherQuery] = useState("");
+  const [teacherFocused, setTeacherFocused] = useState(false);
+  const [roomQuery, setRoomQuery] = useState("");
+  const [roomFocused, setRoomFocused] = useState(false);
+  const teacherManuallyEditedRef = useRef(false);
+  const roomManuallyEditedRef = useRef(false);
+  const noteManuallyEditedRef = useRef(false);
+  const [note, setNote] = useState("");
   const [presentIds, setPresentIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const room: LahsRoom | undefined = getRoomByNumber(roomNumber);
-  const roster = room?.roster ?? [];
+  const roster = useMemo(() => room?.roster ?? [], [room]);
+  const teacherOptions = useMemo<TeacherOption[]>(
+    () =>
+      ROOM_OPTIONS.map((roomOption) => ({
+        key: roomOption.id,
+        teacher: roomOption.teacher,
+        roomNumber: roomOption.number,
+        roomLabel: roomOption.label,
+      })).sort((a, b) => a.teacher.localeCompare(b.teacher)),
+    [],
+  );
+  const teacherMatches = useMemo(() => {
+    const query = teacherQuery.trim().toLowerCase();
+    if (!query) return teacherOptions;
+    return teacherOptions.filter((option) => {
+      const searchable = `${option.teacher} ${option.roomNumber} ${option.roomLabel}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [teacherOptions, teacherQuery]);
+  const roomMatches = useMemo(() => {
+    const query = roomQuery.trim().toLowerCase();
+    if (!query) return ROOM_OPTIONS;
+    return ROOM_OPTIONS.filter((option) => {
+      const searchable = `${option.number} ${option.label} ${option.teacher} ${option.building}`.toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [roomQuery]);
 
   useEffect(() => {
     if (!room) return;
-    setTeacherName(room.teacher);
     setPresentIds(new Set(room.roster.map((s) => s.id)));
   }, [room]);
 
@@ -54,25 +94,144 @@ export function TeacherCheckIn() {
   const parseSource = gemini.yap ? gemini.source : "regex";
 
   useEffect(() => {
-    if (mode !== "voice" || speech.listening || !speech.transcript) return;
+    if (mode !== "voice" || speech.listening || !speech.liveText.trim()) return;
     if (gemini.parsing) return;
+    if (
+      yap.spokenTeacherName &&
+      !teacherManuallyEditedRef.current &&
+      !teacherQuery.trim() &&
+      !teacherName
+    ) {
+      setTeacherName(yap.spokenTeacherName);
+      setTeacherQuery(yap.spokenTeacherName);
+    }
+    if (
+      yap.effectiveRoomNumber &&
+      !roomManuallyEditedRef.current &&
+      !roomQuery.trim() &&
+      !roomNumber
+    ) {
+      const inferredRoom = getRoomByNumber(yap.effectiveRoomNumber);
+      setRoomNumber(yap.effectiveRoomNumber);
+      setRoomQuery(inferredRoom?.label ?? `Room ${yap.effectiveRoomNumber}`);
+      if (
+        inferredRoom?.teacher &&
+        !teacherManuallyEditedRef.current &&
+        !teacherQuery.trim() &&
+        !teacherName
+      ) {
+        setTeacherName(inferredRoom.teacher);
+        setTeacherQuery(inferredRoom.teacher);
+      }
+    }
+    if (yap.notes && !noteManuallyEditedRef.current && !note.trim()) {
+      setNote(yap.notes);
+    }
     if (yap.confidence === "low") return;
     if (yap.presentIds.length > 0 || yap.allAccounted) {
       setPresentIds(new Set(yap.presentIds));
     }
-  }, [mode, speech.listening, speech.transcript, yap, gemini.parsing]);
+  }, [
+    mode,
+    speech.listening,
+    speech.liveText,
+    yap,
+    gemini.parsing,
+    teacherName,
+    teacherQuery,
+    roomNumber,
+    roomQuery,
+    note,
+  ]);
 
   const checkboxSelection = useMemo(
     () => rosterFromSelection(roster, presentIds),
     [roster, presentIds],
   );
 
-  const handleRoomChange = (num: string) => {
-    setRoomNumber(num);
-    const next = getRoomByNumber(num);
-    if (next) {
-      setTeacherName(next.teacher);
-      setPresentIds(new Set(next.roster.map((s) => s.id)));
+  const selectTeacher = (option: TeacherOption) => {
+    const roomAlreadySelected = Boolean(roomNumber || roomQuery.trim());
+    setTeacherQuery(option.teacher);
+    setTeacherName(option.teacher);
+    teacherManuallyEditedRef.current = true;
+    setTeacherFocused(false);
+    if (!roomAlreadySelected) {
+      setRoomNumber(option.roomNumber);
+      setRoomQuery(option.roomLabel);
+      roomManuallyEditedRef.current = false;
+      const next = getRoomByNumber(option.roomNumber);
+      if (next) setPresentIds(new Set(next.roster.map((s) => s.id)));
+    }
+  };
+
+  const selectRoom = (option: LahsRoom) => {
+    const teacherAlreadySelected = Boolean(teacherName || teacherQuery.trim());
+    setRoomQuery(option.label);
+    setRoomNumber(option.number);
+    roomManuallyEditedRef.current = true;
+    if (!teacherAlreadySelected) {
+      setTeacherName(option.teacher);
+      setTeacherQuery(option.teacher);
+      teacherManuallyEditedRef.current = false;
+    }
+    setRoomFocused(false);
+    setTeacherFocused(false);
+    setPresentIds(new Set(option.roster.map((s) => s.id)));
+  };
+
+  const onTeacherChange = (value: string) => {
+    setTeacherQuery(value);
+    teacherManuallyEditedRef.current = true;
+    setTeacherFocused(true);
+    const normalized = value.trim().toLowerCase();
+    const exact = teacherOptions.find(
+      (option) =>
+        option.teacher.toLowerCase() === normalized ||
+        `${option.teacher} ${option.roomLabel}`.toLowerCase() === normalized,
+    );
+    if (exact) {
+      setTeacherQuery(exact.teacher);
+      setTeacherName(exact.teacher);
+      if (!roomManuallyEditedRef.current && !roomNumber && !roomQuery.trim()) {
+        setRoomNumber(exact.roomNumber);
+        setRoomQuery(exact.roomLabel);
+      }
+    } else {
+      setTeacherName(value.trim());
+      if (!roomManuallyEditedRef.current && !roomNumber && !roomQuery.trim()) {
+        setRoomNumber("");
+        setRoomQuery("");
+        setPresentIds(new Set());
+      }
+    }
+  };
+
+  const onRoomChange = (value: string) => {
+    setRoomQuery(value);
+    roomManuallyEditedRef.current = true;
+    setRoomFocused(true);
+    const normalized = value.trim().toLowerCase();
+    const exact = ROOM_OPTIONS.find(
+      (option) =>
+        option.number.toLowerCase() === normalized ||
+        option.label.toLowerCase() === normalized ||
+        `${option.label} ${option.teacher}`.toLowerCase() === normalized,
+    );
+    if (exact) {
+      setRoomQuery(exact.label);
+      setRoomNumber(exact.number);
+      if (!teacherManuallyEditedRef.current && !teacherName && !teacherQuery.trim()) {
+        setTeacherName(exact.teacher);
+        setTeacherQuery(exact.teacher);
+      }
+      setPresentIds(new Set(exact.roster.map((s) => s.id)));
+    } else {
+      setRoomNumber("");
+      if (!teacherManuallyEditedRef.current && !teacherName && !teacherQuery.trim()) {
+        setTeacherName("");
+        setTeacherQuery("");
+      }
+      setPresentIds(new Set());
     }
   };
 
@@ -92,7 +251,7 @@ export function TeacherCheckIn() {
       return;
     }
     if (!room) {
-      setError("Select a valid room.");
+      setError("Select your teacher or room from the list.");
       return;
     }
 
@@ -109,6 +268,7 @@ export function TeacherCheckIn() {
             missingIds: yap.missingIds,
             unmatchedMissing: yap.unmatchedMissing,
             allAccounted: yap.allAccounted,
+            note,
             transcript: speech.liveText,
             inputMode: "voice" as const,
           }
@@ -119,6 +279,7 @@ export function TeacherCheckIn() {
             missingIds: checkboxSelection.missingIds,
             unmatchedMissing: [],
             allAccounted: checkboxSelection.allAccounted,
+            note,
             transcript: null,
             inputMode: "checkbox" as const,
           };
@@ -145,6 +306,7 @@ export function TeacherCheckIn() {
     yap,
     roomNumber,
     teacherName,
+    note,
     speech,
     checkboxSelection,
   ]);
@@ -180,6 +342,26 @@ export function TeacherCheckIn() {
         </p>
       ) : null}
 
+      {mode === "voice" ? (
+        <section className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">
+            AI Autofill
+          </p>
+          <div className="mt-3">
+            <VoiceCapture
+              supported={speech.supported}
+              listening={speech.listening}
+              liveText={speech.liveText}
+              onToggleListen={speech.toggle}
+              onClear={speech.reset}
+              editable
+              onLiveTextChange={speech.setTranscript}
+              transcriptPlaceholder={`Example: "I'm Mr. Blake in room 707, and I have everyone but Maria Garcia"`}
+            />
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#232a35] bg-[#0a0d11] p-1">
         <ModeTab active={mode === "voice"} onClick={() => setMode("voice")}>
           Voice
@@ -191,41 +373,106 @@ export function TeacherCheckIn() {
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#64748b]">
-          Your room
+          Teacher
         </span>
-        <select
-          value={roomNumber}
-          onChange={(e) => handleRoomChange(e.target.value)}
-          className="w-full rounded-xl border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc]"
-        >
-          {ROOM_OPTIONS.map((r) => (
-            <option key={r.id} value={r.number}>
-              {r.label} · {r.building}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <input
+            value={teacherQuery}
+            onChange={(e) => onTeacherChange(e.target.value)}
+            onFocus={() => setTeacherFocused(true)}
+            onBlur={() => setTeacherFocused(false)}
+            placeholder="Type your name"
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={teacherFocused}
+            aria-controls="teacher-options"
+            className="w-full rounded-xl border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc] outline-none focus:border-[#475569]"
+          />
+          {teacherFocused ? (
+            <div
+              id="teacher-options"
+              className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-[#2a3340] bg-[#0c0f13] shadow-xl shadow-black/30"
+              role="listbox"
+            >
+              {teacherMatches.length > 0 ? (
+                teacherMatches.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectTeacher(option)}
+                    className="flex w-full items-center justify-between gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#12161d]"
+                    role="option"
+                    aria-selected={roomNumber === option.roomNumber}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                        {option.teacher}
+                      </span>
+                      <span className="block text-xs text-[#64748b]">{option.roomLabel}</span>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-3 text-sm text-[#94a3b8]">No matching teachers</p>
+              )}
+            </div>
+          ) : null}
+        </div>
       </label>
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#64748b]">
-          Teacher name
+          Room
         </span>
-        <input
-          value={teacherName}
-          onChange={(e) => setTeacherName(e.target.value)}
-          className="w-full rounded-xl border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc]"
-        />
+        <div className="relative">
+          <input
+            value={roomQuery}
+            onChange={(e) => onRoomChange(e.target.value)}
+            onFocus={() => setRoomFocused(true)}
+            onBlur={() => setRoomFocused(false)}
+            placeholder="Type room number"
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={roomFocused}
+            aria-controls="room-options"
+            className="w-full rounded-xl border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc] outline-none focus:border-[#475569]"
+          />
+          {roomFocused ? (
+            <div
+              id="room-options"
+              className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-[#2a3340] bg-[#0c0f13] shadow-xl shadow-black/30"
+              role="listbox"
+            >
+              {roomMatches.length > 0 ? (
+                roomMatches.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectRoom(option)}
+                    className="flex w-full items-center justify-between gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#12161d]"
+                    role="option"
+                    aria-selected={roomNumber === option.number}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                        {option.label}
+                      </span>
+                      <span className="block text-xs text-[#64748b]">{option.teacher}</span>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="px-3 py-3 text-sm text-[#94a3b8]">No matching rooms</p>
+              )}
+            </div>
+          ) : null}
+        </div>
       </label>
 
       {mode === "voice" ? (
         <>
-          <VoiceCapture
-            supported={speech.supported}
-            listening={speech.listening}
-            liveText={speech.liveText}
-            onToggleListen={speech.toggle}
-            onClear={speech.reset}
-          />
           <ParsePreview
             summary={yap.summary}
             unmatched={yap.unmatchedMissing}
@@ -247,12 +494,27 @@ export function TeacherCheckIn() {
         />
       )}
 
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#64748b]">
+          Notes
+        </span>
+        <textarea
+          value={note}
+          onChange={(event) => {
+            noteManuallyEditedRef.current = true;
+            setNote(event.target.value);
+          }}
+          placeholder="Injuries, blocked exits, extra people, medical needs, or other details..."
+          className="min-h-[84px] w-full resize-none rounded-xl border border-[#2a3340] bg-[#0c0f13] px-3 py-3 text-base text-[#f8fafc] outline-none placeholder:text-[#475569] focus:border-[#475569]"
+        />
+      </label>
+
       {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={submitting || !firebaseReady}
+        disabled={submitting || !firebaseReady || !roomNumber}
         className="w-full rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 py-4 text-base font-semibold text-white shadow-lg shadow-sky-950/40 disabled:opacity-50"
       >
         {submitting ? "Sending…" : "Send roll call to staff"}
@@ -318,7 +580,7 @@ function ParsePreview({
         Submitting as room <span className="font-mono text-[#e2e8f0]">{submitRoom}</span>
         {spokenRoom
           ? " · heard in voice"
-          : ` · dropdown (${selectedRoom})`}
+          : ` · selected room (${selectedRoom})`}
       </p>
       <p className="mt-1 text-sm text-[#e2e8f0]">{summary}</p>
       {unmatched.length > 0 ? (

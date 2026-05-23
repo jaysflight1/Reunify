@@ -35,10 +35,16 @@ export function buildSingleRoom(
   bounds: { x: number; y: number; w: number; h: number },
   rosterSize = 8,
 ): LahsRoom {
+  const specialLabels: Record<string, string> = {
+    library: "Library",
+    "student-services": "Student Services Building",
+    theatre: "Room Theater",
+  };
+
   return {
     id: `room-${number}`,
     number,
-    label: number === "library" ? "Library" : `Room ${number}`,
+    label: specialLabels[number] ?? `Room ${number}`,
     building,
     teacher: teacherForRoom(number, building),
     ...bounds,

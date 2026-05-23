@@ -23,7 +23,12 @@ export function RoomDetailPanel({
   const stats = getRoomEvacStats(room, roomStatsMap, unaccountedIds);
   const teacherSnap = getTeacherSnapshot(room, teacherByRoom);
   const missing = stats.rosterMissing;
-  const rosterAccounted = room.roster.length - missing.length;
+  const rosterIds = new Set(room.roster.map((student) => student.id));
+  const guestCheckIns = stats.checkIns.filter(
+    (checkIn) => checkIn.rosterStudentId && !rosterIds.has(checkIn.rosterStudentId),
+  );
+  const rosterTotal = room.roster.length + guestCheckIns.length;
+  const rosterAccounted = room.roster.length - missing.length + guestCheckIns.length;
 
   return (
     <div className="absolute bottom-3 left-3 right-3 z-20 max-h-[42%] overflow-hidden rounded-lg border border-[#334155] bg-[#0c0f13]/97 shadow-xl backdrop-blur-md sm:left-auto sm:right-3 sm:w-[300px]">
@@ -47,7 +52,7 @@ export function RoomDetailPanel({
       <div className="grid grid-cols-3 gap-px border-b border-[#232a35] bg-[#232a35] text-center">
         <div className="bg-[#0c0f13] px-2 py-2">
           <p className="text-[9px] uppercase tracking-wider text-[#64748b]">Roster</p>
-          <p className="font-mono text-base font-semibold text-[#e2e8f0]">{room.roster.length}</p>
+          <p className="font-mono text-base font-semibold text-[#e2e8f0]">{rosterTotal}</p>
         </div>
         <div className="bg-[#0c0f13] px-2 py-2">
           <p className="text-[9px] uppercase tracking-wider text-[#64748b]">Roster in</p>

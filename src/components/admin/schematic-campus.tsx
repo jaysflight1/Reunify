@@ -64,7 +64,7 @@ export function SchematicCampus() {
       <WingShell x={4} y={6} w={44} h={18} label="900" />
       <WingShell x={36} y={60} w={22} h={10} label="800" />
 
-      <WingShell x={4} y={50} w={22} h={14} label="Theatre" />
+      <WingShell x={4} y={50} w={22} h={14} label="Theater" />
       <WingShell x={4} y={66} w={26} h={14} label="Library" />
       <WingShell x={102} y={76} w={32} h={12} label="Student Svc" />
 
