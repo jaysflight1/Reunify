@@ -49,6 +49,7 @@ service cloud.firestore {
         && request.resource.data.drillId is string
         && request.resource.data.roomNumber is string
         && request.resource.data.roomNumber.size() > 0
+        && (!('spokenRoomNumber' in request.resource.data) || request.resource.data.spokenRoomNumber == null || request.resource.data.spokenRoomNumber is string)
         && request.resource.data.teacherName is string
         && request.resource.data.teacherName.size() > 0
         && request.resource.data.teacherName.size() < 120

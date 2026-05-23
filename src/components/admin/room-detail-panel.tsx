@@ -74,6 +74,9 @@ export function RoomDetailPanel({
             <p className="text-[10px] text-[#64748b]">
               {teacherSnap.report.inputMode === "voice" ? "Voice" : "Roster"} ·{" "}
               {formatTime(new Date(teacherSnap.report.updatedAt))}
+              {teacherSnap.report.spokenRoomNumber
+                ? ` · said room ${teacherSnap.report.spokenRoomNumber}`
+                : null}
             </p>
           </div>
         ) : null}

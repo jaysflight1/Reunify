@@ -40,6 +40,8 @@ export type TeacherRoomReport = {
   drillId: string;
   teacherUid: string;
   roomNumber: string;
+  /** Room explicitly stated in voice, if different from dropdown selection. */
+  spokenRoomNumber: string | null;
   teacherName: string;
   presentIds: string[];
   missingIds: string[];
@@ -54,6 +56,7 @@ export type TeacherRoomReport = {
 
 export type TeacherReportSubmit = {
   roomNumber: string;
+  spokenRoomNumber?: string | null;
   teacherName: string;
   presentIds: string[];
   missingIds: string[];
