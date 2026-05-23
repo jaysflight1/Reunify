@@ -1,8 +1,8 @@
-import { FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
+import { FirebaseApp, getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { Auth, getAuth } from "firebase/auth";
 import { Firestore, getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
+export const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -23,7 +23,9 @@ let app: FirebaseApp | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (!isFirebaseConfigured()) {
-    throw new Error("Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* env vars.");
+    throw new Error(
+      "Firebase client config is missing. Add NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and NEXT_PUBLIC_FIREBASE_APP_ID.",
+    );
   }
   if (!app) {
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);

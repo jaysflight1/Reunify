@@ -1,16 +1,17 @@
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+import { cert, getApps, initializeApp, type App, type ServiceAccount } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { StudentReport, TeacherRoomReport } from "./types";
 import { mapTeacherDoc } from "./teacher-reports";
 import { ACTIVE_DRILL_ID } from "./config";
 
-function parseServiceAccount(): Record<string, unknown> | null {
+function parseJsonServiceAccount(): ServiceAccount | null {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw?.trim()) return null;
 
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof parsed.private_key === "string") {
+    const parsed = JSON.parse(raw) as ServiceAccount & { private_key?: string };
+    if (parsed.private_key) {
       parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
     }
     return parsed;
@@ -19,14 +20,31 @@ function parseServiceAccount(): Record<string, unknown> | null {
   }
 }
 
-function getAdminApp(): App | null {
+function parseSplitServiceAccount(): ServiceAccount | null {
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  if (!projectId || !clientEmail || !privateKey) return null;
+  return { projectId, clientEmail, privateKey };
+}
+
+function parseServiceAccount(): ServiceAccount | null {
+  return parseSplitServiceAccount() ?? parseJsonServiceAccount();
+}
+
+export function firebaseAdminConfigError(): string {
+  return "Firebase Admin credentials are missing. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY, or set FIREBASE_SERVICE_ACCOUNT_JSON for the current proof of concept.";
+}
+
+export function getAdminApp(): App | null {
   const serviceAccount = parseServiceAccount();
   if (!serviceAccount) return null;
 
   try {
     if (getApps().length) return getApps()[0]!;
     return initializeApp({
-      credential: cert(serviceAccount as Parameters<typeof cert>[0]),
+      credential: cert(serviceAccount),
     });
   } catch {
     return null;
@@ -37,10 +55,28 @@ export function isFirebaseAdminConfigured(): boolean {
   return parseServiceAccount() !== null;
 }
 
-function getAdminDb(): Firestore | null {
+export function getAdminDb(): Firestore | null {
   const app = getAdminApp();
   if (!app) return null;
   return getFirestore(app);
+}
+
+export function getAdminAuth(): Auth | null {
+  const app = getAdminApp();
+  if (!app) return null;
+  return getAuth(app);
+}
+
+export function requireAdminDb(): Firestore {
+  const db = getAdminDb();
+  if (!db) throw new Error(firebaseAdminConfigError());
+  return db;
+}
+
+export function requireAdminAuth(): Auth {
+  const auth = getAdminAuth();
+  if (!auth) throw new Error(firebaseAdminConfigError());
+  return auth;
 }
 
 export async function fetchDrillReportsAdmin(
@@ -101,7 +137,7 @@ export async function seedFirestoreCatalog(
   rooms: RoomRecord[],
 ): Promise<{ rooms: number; drill: boolean }> {
   const db = getAdminDb();
-  if (!db) throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON not configured");
+  if (!db) throw new Error(firebaseAdminConfigError());
 
   const batch = db.batch();
   for (const room of rooms) {

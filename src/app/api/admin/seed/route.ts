@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { isFirebaseAdminConfigured, seedFirestoreCatalog } from "@/lib/firebase/admin";
+import {
+  firebaseAdminConfigError,
+  isFirebaseAdminConfigured,
+  seedFirestoreCatalog,
+} from "@/lib/firebase/admin";
 import { ACTIVE_DRILL_ID } from "@/lib/firebase/config";
 import { ROOM_OPTIONS } from "@/lib/lahs-rooms/room-options";
 
@@ -7,8 +11,7 @@ export async function POST() {
   if (!isFirebaseAdminConfigured()) {
     return NextResponse.json(
       {
-        error:
-          "Add FIREBASE_SERVICE_ACCOUNT_JSON to .env.local, then restart the dev server.",
+        error: `${firebaseAdminConfigError()} Restart the dev server after adding credentials.`,
       },
       { status: 503 },
     );

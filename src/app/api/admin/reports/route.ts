@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  firebaseAdminConfigError,
   fetchDrillReportsAdmin,
   fetchTeacherReportsAdmin,
   isFirebaseAdminConfigured,
@@ -10,7 +11,7 @@ export async function GET() {
   if (!isFirebaseAdminConfigured()) {
     return NextResponse.json(
       {
-        error: "FIREBASE_SERVICE_ACCOUNT_JSON not configured",
+        error: firebaseAdminConfigError(),
         reports: [],
         teacherReports: [],
       },
