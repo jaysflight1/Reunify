@@ -1,5 +1,7 @@
 "use client";
 
+type ModeSelection = "auto" | "demo" | "live";
+
 type StatsBarProps = {
   safeCount: number;
   unsafeCount: number;
@@ -10,6 +12,9 @@ type StatsBarProps = {
   onSeedBurst: () => void;
   dataMode?: "demo" | "firebase" | "local";
   firebaseConnected?: boolean;
+  /** True when Firebase or local check-in is configured. Disables the Live tab if false. */
+  liveCapable?: boolean;
+  onSelectMode?: (mode: ModeSelection) => void;
 };
 
 export function StatsBar({
@@ -22,7 +27,10 @@ export function StatsBar({
   onSeedBurst,
   dataMode = "demo",
   firebaseConnected = false,
+  liveCapable = false,
+  onSelectMode,
 }: StatsBarProps) {
+  const showingDemo = dataMode === "demo";
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-[#232a35] bg-[#080a0d] px-4 py-3">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -70,7 +78,30 @@ export function StatsBar({
           Updated {lastTick}
         </p>
         <div className="flex gap-1.5">
-          {dataMode === "demo" ? (
+          {onSelectMode ? (
+            <div
+              role="group"
+              aria-label="Data source"
+              className="flex overflow-hidden rounded border border-[#2a3340] bg-[#0c0f13] text-[10px] font-medium"
+            >
+              <ModeTab
+                active={showingDemo}
+                onClick={() => onSelectMode("demo")}
+                label="Demo"
+              />
+              <ModeTab
+                active={!showingDemo}
+                onClick={() => onSelectMode("live")}
+                label={liveCapable ? "Real-time" : "Real-time*"}
+                title={
+                  liveCapable
+                    ? "Live data from Firebase / check-ins"
+                    : "Firebase not configured — real-time will stay empty until check-ins arrive"
+                }
+              />
+            </div>
+          ) : null}
+          {showingDemo ? (
             <button
               type="button"
               onClick={onSeedBurst}
@@ -93,6 +124,34 @@ export function StatsBar({
         </div>
       </div>
     </header>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  label,
+  title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      className={`px-2.5 py-1 transition ${
+        active
+          ? "bg-sky-900/40 text-sky-200"
+          : "text-[#64748b] hover:bg-[#12161d] hover:text-[#94a3b8]"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

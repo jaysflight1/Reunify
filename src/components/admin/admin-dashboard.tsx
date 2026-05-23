@@ -6,8 +6,9 @@ import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
+
+type ModeSelection = "auto" | "demo" | "live";
 import { CampusMap } from "./campus-map";
-import { BroadcastGenerator } from "./broadcast-generator";
 import { ConflictList } from "./conflict-list";
 import { LiveFeed } from "./live-feed";
 import { MissingPanel } from "./missing-panel";
@@ -80,9 +81,13 @@ function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentReco
 }
 
 export function AdminDashboard() {
-  const live = useAdminLiveData();
   const firebaseOn = isFirebaseConfigured();
   const localMode = isLocalCheckInMode();
+  const [modeSelection, setModeSelection] = useState<ModeSelection>("auto");
+  const liveCapable = firebaseOn || localMode;
+  const forceMode =
+    modeSelection === "demo" ? "demo" : modeSelection === "live" ? "live" : undefined;
+  const live = useAdminLiveData({ forceMode });
   const [selectedRecord, setSelectedRecord] = useState<AdminStudentRecord | null>(null);
 
   const studentRecords = useMemo(() => {
@@ -120,6 +125,8 @@ export function AdminDashboard() {
         onSeedBurst={live.seedBurst}
         dataMode={live.mode}
         firebaseConnected={live.firebaseConnected}
+        liveCapable={liveCapable}
+        onSelectMode={setModeSelection}
       />
 
       {(firebaseOn || localMode) &&
@@ -155,10 +162,10 @@ export function AdminDashboard() {
         <section className="flex min-h-[min(50vh,480px)] flex-col lg:col-span-8 lg:min-h-[calc(100vh-5.5rem)] xl:col-span-9">
           <div className="min-h-0 flex-1">
             <CampusMap
-              phones={live.phones}
               unaccountedIds={live.unaccountedIds}
               roomStatsMap={live.roomStatsMap}
               teacherByRoom={live.teacherByRoom}
+              studentDots={live.studentDots}
             />
           </div>
           <p className="mt-2 shrink-0 px-1 text-[10px] leading-relaxed text-[#475569]">
@@ -171,7 +178,6 @@ export function AdminDashboard() {
               <StudentStatusTable records={studentRecords} onSelect={setSelectedRecord} />
             </div>
             <div className="grid gap-3">
-              <BroadcastGenerator />
               <ReportFeed events={live.events} />
               <ConflictList records={studentRecords} />
             </div>

@@ -39,8 +39,6 @@ service cloud.firestore {
             && request.resource.data.teacherName == ''
             && request.resource.data.shooterNearby == false)
           || (request.resource.data.status == 'unsafe'
-            && request.resource.data.roomNumber == 'need-help'
-            && request.resource.data.teacherName == ''
             && request.resource.data.offCampus == false)
           || (request.resource.data.offCampus == false
             && request.resource.data.status == 'safe'

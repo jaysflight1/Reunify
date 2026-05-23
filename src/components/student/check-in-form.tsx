@@ -178,17 +178,28 @@ export function CheckInForm() {
         setRoomQuery(roomDisplayLabel(selectedRoom));
       }
 
+      const dangerSignal =
+        parsed.status === "unsafe" || parsed.shooterNearby === true;
+      const roomNoteForDanger =
+        dangerSignal && selectedRoom ? `Says they are in room ${selectedRoom.number}` : null;
+      const aiNote = [roomNoteForDanger, parsed.note]
+        .filter((entry): entry is string => Boolean(entry && entry.trim()))
+        .join(". ");
+
       setForm((f) => ({
         ...f,
         studentName: student?.fullName ?? f.studentName,
         studentId: student?.id ?? f.studentId,
         grade: student?.grade ?? f.grade,
-        status:
-          parsed.status === "safe" || parsed.status === "unsafe" ? parsed.status : f.status,
-        offCampus: parsed.offCampus ?? f.offCampus,
+        status: dangerSignal
+          ? "unsafe"
+          : parsed.status === "safe"
+            ? "safe"
+            : f.status,
+        offCampus: dangerSignal ? false : (parsed.offCampus ?? f.offCampus),
         roomNumber: selectedRoom?.number ?? f.roomNumber,
         teacherName: selectedRoom?.teacher ?? f.teacherName,
-        note: f.note || parsed.note || "",
+        note: f.note || aiNote || "",
       }));
       if (parsed.shooterNearby != null) {
         setShooterNearby(parsed.shooterNearby);
@@ -316,8 +327,8 @@ export function CheckInForm() {
         status: form.status,
         offCampus: form.offCampus && form.status === "safe",
         shooterNearby: needHelp ? shooterNearby : undefined,
-        roomNumber: needsRoom ? form.roomNumber : "",
-        teacherName: needsRoom ? form.teacherName : "",
+        roomNumber: form.offCampus && form.status === "safe" ? "" : form.roomNumber,
+        teacherName: form.offCampus && form.status === "safe" ? "" : form.teacherName,
         location,
         note: form.note || voiceNote || undefined,
       });
@@ -466,7 +477,7 @@ export function CheckInForm() {
             tone="safe"
             onClick={() => setForm((f) => ({ ...f, status: "safe", offCampus: false }))}
           >
-            Safe · on campus
+            Safe In Room
           </StatusButton>
           <StatusButton
             active={form.status === "unsafe"}

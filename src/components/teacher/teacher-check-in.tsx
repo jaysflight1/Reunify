@@ -127,7 +127,7 @@ export function TeacherCheckIn() {
         setTeacherQuery(inferredRoom.teacher);
       }
     }
-    if (yap.notes && !noteManuallyEditedRef.current && !note.trim()) {
+    if (yap.notes && !noteManuallyEditedRef.current && yap.notes !== note) {
       setNote(yap.notes);
     }
     if (yap.confidence === "low") return;

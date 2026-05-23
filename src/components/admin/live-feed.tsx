@@ -56,9 +56,9 @@ export function LiveFeed({ events }: LiveFeedProps) {
                     Gr {evt.student.grade}
                     {evt.roomNumber === "Off campus"
                       ? " · Off campus"
-                      : evt.roomNumber === "Need help"
-                        ? " · Need help"
-                        : ` · Rm ${evt.roomNumber}`}
+                      : evt.roomNumber
+                        ? ` · Rm ${evt.roomNumber}`
+                        : ""}
                   </p>
                   {evt.teacherName && evt.teacherName !== "—" ? (
                     <p className="truncate text-[10px] text-[#94a3b8]">{evt.teacherName}</p>

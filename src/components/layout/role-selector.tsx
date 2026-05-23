@@ -5,7 +5,7 @@ import { DEMO_ROLE_OPTIONS, DEMO_USER_STORAGE_KEY } from "@/lib/auth/demo-users"
 import type { UserRole } from "@/types/user";
 
 const DESCRIPTIONS: Record<UserRole, string> = {
-  admin: "Command center, map, alerts, reports, broadcasts.",
+  admin: "Command center, map, alerts, reports.",
   teacher: "Voice or text reports plus roster roll call.",
   student: "Locked-down self status and help request.",
   parent: "Child-only status and pickup messaging.",

@@ -226,19 +226,6 @@ export type Conflict = {
   resolvedByUserId?: string;
 };
 
-export type BroadcastAudience = "parents" | "teachers" | "responders" | "students";
-
-export type Broadcast = {
-  id: string;
-  schoolId: string;
-  incidentId: string;
-  audience: BroadcastAudience;
-  message: string;
-  createdAt: string;
-  createdByUserId: string;
-  generatedByAi: boolean;
-};
-
 export type ParentSafeStudentStatus = {
   studentId: string;
   studentName: string;

@@ -1,4 +1,3 @@
-import type { BroadcastAudience } from "@/types/incident";
 import type { UserRole } from "@/types/user";
 
 export const DEMO_SCHOOL_ID = "demo-school";
@@ -17,9 +16,3 @@ export const DEMO_ROOM_44_ID = "room-44";
 export const DEMO_GYM_ID = "gym";
 export const DEMO_PICKUP_ZONE_B_ID = "pickup-zone-b";
 
-export const DEMO_BROADCAST_AUDIENCES: BroadcastAudience[] = [
-  "parents",
-  "teachers",
-  "responders",
-  "students",
-];

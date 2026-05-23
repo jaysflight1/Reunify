@@ -1,10 +1,6 @@
 import "server-only";
 
-import {
-  ACTIVE_DRILL_ID,
-  NEED_HELP_ROOM,
-  OFF_CAMPUS_ROOM,
-} from "@/lib/firebase/config";
+import { ACTIVE_DRILL_ID, OFF_CAMPUS_ROOM } from "@/lib/firebase/config";
 import type {
   StudentReport,
   StudentReportInput,
@@ -55,12 +51,8 @@ function mapStudentInput(input: StudentReportInput, id: string, now: number): St
     status: input.status,
     offCampus,
     shooterNearby: needHelp ? Boolean(input.shooterNearby) : false,
-    roomNumber: offCampus
-      ? OFF_CAMPUS_ROOM
-      : needHelp
-        ? NEED_HELP_ROOM
-        : input.roomNumber,
-    teacherName: offCampus || needHelp ? "" : input.teacherName.trim(),
+    roomNumber: offCampus ? OFF_CAMPUS_ROOM : input.roomNumber.trim(),
+    teacherName: offCampus ? "" : input.teacherName.trim(),
     location: input.location,
     note: input.note?.trim() || null,
     createdAt: now,

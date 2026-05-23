@@ -1,53 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CAMPUS_MAP,
-  EGRESS_PATHS,
-  interpolatePath,
-  RALLY_POINT,
-  type MapPoint,
-} from "@/lib/demo-data";
+import { CAMPUS_MAP } from "@/lib/demo-data";
 import type { LahsRoom } from "@/lib/lahs-rooms";
 import type { RoomEvacStats } from "@/lib/room-accounting";
 import type { TeacherRoomSnapshot } from "@/lib/evacuation-state";
-import type { TrackedPhone } from "@/hooks/use-live-simulation";
+import type { StudentDot } from "@/lib/student-dots";
 import { SchematicCampus } from "./schematic-campus";
 import { RoomLayer } from "./room-layer";
 import { RoomDetailPanel } from "./room-detail-panel";
+import { StudentDotsLayer } from "./student-dots-layer";
 
 type CampusMapProps = {
-  phones: TrackedPhone[];
   unaccountedIds: ReadonlySet<string>;
   roomStatsMap: ReadonlyMap<string, RoomEvacStats>;
   teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>;
+  studentDots: readonly StudentDot[];
 };
 
 const VB = `0 0 ${CAMPUS_MAP.viewBox.w} ${CAMPUS_MAP.viewBox.h}`;
 
-function EgressDot({ x, y }: { x: number; y: number }) {
-  return (
-    <circle cx={x} cy={y} r={0.7} fill="#fbbf24" stroke="#0c0f13" strokeWidth={0.2} />
-  );
-}
-
-function PathLine({ points }: { points: MapPoint[] }) {
-  const d = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  return (
-    <path
-      d={d}
-      fill="none"
-      stroke="#f59e0b"
-      strokeWidth={0.4}
-      strokeOpacity={0.5}
-      strokeDasharray="1.5 1"
-    />
-  );
-}
-
-export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom }: CampusMapProps) {
+export function CampusMap({
+  unaccountedIds,
+  roomStatsMap,
+  teacherByRoom,
+  studentDots,
+}: CampusMapProps) {
   const [selectedRoom, setSelectedRoom] = useState<LahsRoom | null>(null);
   const [showRoomNumbers, setShowRoomNumbers] = useState(true);
+  const [showDots, setShowDots] = useState(true);
 
   return (
     <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-[#232a35] bg-[#0a0d11]">
@@ -62,17 +43,24 @@ export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom 
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] text-[#6b7a8f]">
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-emerald-500/50" />
-            All in
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Safe
           </span>
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-amber-500/50" />
-            Some out
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            Missing
           </span>
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm bg-rose-500/50" />
-            Many out
+            <span className="h-2 w-2 rounded-full bg-rose-500" />
+            Needs help
           </span>
+          <button
+            type="button"
+            onClick={() => setShowDots((v) => !v)}
+            className="rounded border border-[#2a3340] px-2 py-0.5 text-[#94a3b8] hover:bg-[#1a212b]"
+          >
+            {showDots ? "Hide dots" : "Show dots"}
+          </button>
           <button
             type="button"
             onClick={() => setShowRoomNumbers((v) => !v)}
@@ -106,37 +94,7 @@ export function CampusMap({ phones, unaccountedIds, roomStatsMap, teacherByRoom 
               showLabels={showRoomNumbers}
             />
 
-            {EGRESS_PATHS.map((path) => (
-              <PathLine key={path.id} points={path.points} />
-            ))}
-
-            <g>
-              <circle
-                cx={RALLY_POINT.x}
-                cy={RALLY_POINT.y}
-                r={3.5}
-                fill="#10b981"
-                fillOpacity={0.15}
-                stroke="#34d399"
-                strokeWidth={0.45}
-              />
-              <circle cx={RALLY_POINT.x} cy={RALLY_POINT.y} r={1} fill="#34d399" />
-              <text
-                x={RALLY_POINT.x}
-                y={RALLY_POINT.y + 5.5}
-                textAnchor="middle"
-                className="fill-emerald-400 text-[2.4px] font-medium"
-              >
-                {RALLY_POINT.label}
-              </text>
-            </g>
-
-            {phones.map((phone) => {
-              const path = EGRESS_PATHS.find((p) => p.id === phone.pathId);
-              if (!path) return null;
-              const pos = interpolatePath(path.points, phone.progress);
-              return <EgressDot key={phone.pathId} x={pos.x} y={pos.y} />;
-            })}
+            {showDots ? <StudentDotsLayer dots={studentDots} /> : null}
           </svg>
 
           {selectedRoom ? (

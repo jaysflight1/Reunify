@@ -83,7 +83,7 @@ Rules:
 - missingStudentIds: use ONLY ids from the roster list for students who are missing / not accounted for.
 - If everyone is present/accounted, set allAccounted true and missingStudentIds [].
 - unmatchedNames: names mentioned as missing that do not match any roster id.
-- notes: important staff-facing details that do not fit another field, such as injuries, blocked exits, medical needs, smoke, threats, extra people, or evacuation problems. Use null if no extra notes.
+- notes: any relevant staff-facing detail the transcript mentions that is NOT a name, room number, or simple "everyone is here" statement. Include injuries, medical needs, blocked or unsafe exits, smoke/fire/alarms, broken doors or windows, threats or intruders, weapons mentioned, extra people or visitors, students in distress or panicking, relocations (e.g. "we moved to the gym"), evacuation problems, and anything else staff should know. Combine multiple details into one short note. Use null only if the transcript has no such details.
 - confidence: high if intent is clear, low if garbled or ambiguous.
 - summary: one short line for staff UI (include room if spoken).
 

@@ -13,7 +13,6 @@ import {
 import { signInAnonymously } from "firebase/auth";
 import {
   ACTIVE_DRILL_ID,
-  NEED_HELP_ROOM,
   OFF_CAMPUS_ROOM,
   getClientAuth,
   getClientFirestore,
@@ -114,12 +113,8 @@ export async function submitStudentReport(input: StudentReportInput): Promise<vo
       status: input.status,
       offCampus,
       shooterNearby: needHelp ? Boolean(input.shooterNearby) : false,
-      roomNumber: offCampus
-        ? OFF_CAMPUS_ROOM
-        : needHelp
-          ? NEED_HELP_ROOM
-          : input.roomNumber,
-      teacherName: offCampus || needHelp ? "" : input.teacherName.trim(),
+      roomNumber: offCampus ? OFF_CAMPUS_ROOM : input.roomNumber.trim(),
+      teacherName: offCampus ? "" : input.teacherName.trim(),
       location: input.location,
       note: input.note?.trim() || null,
       updatedAt: serverTimestamp(),

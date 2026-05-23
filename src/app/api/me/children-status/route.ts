@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { AuthError, requireUser } from "@/lib/auth/requireUser";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { toParentSafeStatus } from "@/lib/incident/parentSafe";
-import type { Broadcast, ParentSafeStudentStatus, Student, StudentIncidentState } from "@/types/incident";
+import type { ParentSafeStudentStatus, Student, StudentIncidentState } from "@/types/incident";
 
 type ParentChildrenStatusResponse = {
   children: ParentSafeStudentStatus[];
-  parentBroadcasts: Broadcast[];
 };
 
 function errorResponse(error: unknown) {
@@ -38,7 +37,7 @@ export async function GET(request: Request) {
     const parent = await requireUser(request, { roles: ["parent"] });
     const linkedStudentIds = parent.user.linkedStudentIds ?? [];
     if (linkedStudentIds.length === 0) {
-      return NextResponse.json({ children: [], parentBroadcasts: [] });
+      return NextResponse.json({ children: [] });
     }
 
     const db = getAdminDb();
@@ -59,7 +58,6 @@ export async function GET(request: Request) {
             updatedAt: "",
           }),
         ),
-        parentBroadcasts: [],
       };
       return NextResponse.json(response);
     }
@@ -87,16 +85,7 @@ export async function GET(request: Request) {
       }),
     );
 
-    const broadcastsSnap = await db
-      .collection(`schools/${parent.schoolId}/incidents/${activeIncidentId}/broadcasts`)
-      .where("audience", "==", "parents")
-      .limit(5)
-      .get();
-
-    const response: ParentChildrenStatusResponse = {
-      children,
-      parentBroadcasts: broadcastsSnap.docs.map((doc) => doc.data() as Broadcast),
-    };
+    const response: ParentChildrenStatusResponse = { children };
 
     return NextResponse.json(response);
   } catch (error) {

@@ -63,8 +63,8 @@ function normalizeParsed(raw: ParsedStudentTranscript): ParsedStudentTranscript 
   return {
     studentId: student?.id ?? null,
     studentName: student?.fullName ?? null,
-    status: raw.status,
-    offCampus: raw.offCampus,
+    status: raw.shooterNearby === true ? "unsafe" : raw.status,
+    offCampus: raw.shooterNearby === true ? false : raw.offCampus,
     roomNumber: room?.number ?? null,
     teacherName: teacher ?? null,
     shooterNearby: raw.shooterNearby,
@@ -97,9 +97,10 @@ function fallbackParse(transcript: string): ParsedStudentTranscript {
     rooms.find((candidate) => lower.includes(candidate.label.toLowerCase()));
   const teachers = [...new Set(rooms.map((candidate) => candidate.teacher.trim()).filter(Boolean))];
   const teacher = teachers.find((candidate) => lower.includes(candidate.toLowerCase()));
-  const unsafe = /\b(help|hurt|injured|trapped|unsafe|danger|emergency|shooter|bleeding)\b/i.test(
-    transcript,
-  );
+  const unsafe =
+    /\b(help|hurt|injured|trapped|unsafe|danger|dangerous|emergency|shooter|gunman|attacker|intruder|weapon|gun|threat|threatened|scared|attack|attacking|bleeding|fire|smoke|locked\s+in|stuck)\b/i.test(
+      transcript,
+    );
   const safe = /\b(safe|ok|okay|fine|secure)\b/i.test(transcript);
   const offCampus = /\b(off campus|home|not on campus|away from school)\b/i.test(transcript);
   const shooterNearby =
@@ -111,11 +112,13 @@ function fallbackParse(transcript: string): ParsedStudentTranscript {
     );
   const note = extractSafetyNote(transcript);
 
+  const danger = unsafe || shooterNearby;
+
   return {
     studentId: student?.id ?? null,
     studentName: student?.fullName ?? null,
-    status: unsafe ? "unsafe" : safe ? "safe" : "unknown",
-    offCampus: offCampus || null,
+    status: danger ? "unsafe" : safe ? "safe" : "unknown",
+    offCampus: danger ? false : offCampus || null,
     roomNumber: room?.number ?? null,
     teacherName: teacher ?? null,
     shooterNearby: shooterNearby || null,

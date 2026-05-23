@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { formatTime } from "@/lib/demo-data";
 import type { StudentReport } from "@/lib/firebase/types";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
-import { isFirebaseConfigured, NEED_HELP_ROOM } from "@/lib/firebase/config";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { useFirebaseReports } from "@/hooks/use-firebase-reports";
 import { useLiveSimulation } from "@/hooks/use-live-simulation";
@@ -14,7 +14,7 @@ import {
   unaccountedStudents,
   type TeacherRoomSnapshot,
 } from "@/lib/evacuation-state";
-import type { RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, type RoomStudent } from "@/lib/lahs-rooms";
 import {
   buildRoomEvacStatsMap,
   groupCheckInsByRoom,
@@ -22,9 +22,27 @@ import {
   type RoomEvacStats,
   unaccountedToStudents,
 } from "@/lib/room-accounting";
+import { buildStudentDots, type DotStatus, type StudentDot } from "@/lib/student-dots";
+
+export type DataMode = "demo" | "firebase" | "local";
+
+type UseAdminLiveDataOptions = {
+  /** Override automatic mode detection. */
+  forceMode?: "demo" | "live";
+};
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function rosterIdForName(name: string): string | null {
+  const key = normalizeName(name);
+  if (!key) return null;
+  return ALL_ROSTER_STUDENTS.find((s) => normalizeName(s.name) === key)?.id ?? null;
+}
 
 function reportToEvent(report: StudentReport): CheckInEvent {
-  const needHelp = report.status === "unsafe" || report.roomNumber === NEED_HELP_ROOM;
+  const needHelp = report.status === "unsafe";
   const shooterNote = report.shooterNearby ? "Shooter actively nearby" : null;
   const combinedNote = [shooterNote, report.note].filter(Boolean).join(" · ") || undefined;
 
@@ -35,13 +53,15 @@ function reportToEvent(report: StudentReport): CheckInEvent {
       name: report.studentName,
       grade: report.grade || "—",
     },
-    roomNumber: report.offCampus ? "Off campus" : needHelp ? "Need help" : report.roomNumber,
-    teacherName: report.offCampus || needHelp ? "—" : report.teacherName,
+    roomNumber: report.offCampus ? "Off campus" : report.roomNumber || "",
+    teacherName: report.offCampus ? "—" : report.teacherName || "",
     status: report.status,
     at: formatTime(new Date(report.updatedAt)),
     note:
       combinedNote ??
       (report.offCampus ? "Safe off campus" : needHelp ? "Emergency help requested" : undefined),
+    rawText: report.note?.trim() || undefined,
+    source: "student",
   };
 }
 
@@ -56,26 +76,85 @@ function eventsToCheckIns(events: CheckInEvent[]): RoomCheckIn[] {
   }));
 }
 
-export function useAdminLiveData() {
+function dotsFromDemoEvents(
+  events: CheckInEvent[],
+  unaccountedIds: ReadonlySet<string>,
+  walkers: ReadonlyMap<string, import("@/lib/student-dots").Walker>,
+): StudentDot[] {
+  const statusById = new Map<string, DotStatus>();
+  // Walk events newest-first so the latest status wins.
+  for (const event of events) {
+    const id = event.student.id;
+    if (!id.startsWith("r")) continue; // skip teacher synthetic events
+    if (statusById.has(id)) continue;
+    statusById.set(id, event.status === "unsafe" ? "unsafe" : "safe");
+  }
+  return buildStudentDots({
+    statusById,
+    unaccountedIds,
+    walkerById: walkers,
+  });
+}
+
+function dotsFromFirebase(
+  studentReports: readonly StudentReport[],
+  teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>,
+  unaccountedIds: ReadonlySet<string>,
+): StudentDot[] {
+  const statusById = new Map<string, DotStatus>();
+  const roomOverrideById = new Map<string, string>();
+
+  // Teacher reports: anyone in presentIds is safe, anyone in missingIds is unsafe (treat
+  // teacher-reported missing as "needs follow-up" yellow via the missing path).
+  for (const snap of teacherByRoom.values()) {
+    for (const id of snap.report.presentIds) {
+      statusById.set(id, "safe");
+      roomOverrideById.set(id, snap.report.roomNumber);
+    }
+  }
+
+  // Student self-reports override teacher status (student speaks for themselves).
+  const sorted = [...studentReports].sort((a, b) => b.updatedAt - a.updatedAt);
+  for (const report of sorted) {
+    const id = rosterIdForName(report.studentName);
+    if (!id) continue;
+    if (statusById.get(id) === "unsafe" && report.status !== "unsafe") continue;
+    statusById.set(id, report.status === "unsafe" ? "unsafe" : "safe");
+    if (report.roomNumber && !report.offCampus) {
+      roomOverrideById.set(id, report.roomNumber);
+    }
+  }
+
+  return buildStudentDots({
+    statusById,
+    unaccountedIds,
+    roomOverrideById,
+  });
+}
+
+export function useAdminLiveData(options: UseAdminLiveDataOptions = {}) {
   const localMode = isLocalCheckInMode();
-  const firebaseEnabled = isFirebaseConfigured() || localMode;
-  const firebase = useFirebaseReports(firebaseEnabled);
-  const sim = useLiveSimulation();
+  const firebaseAuto = isFirebaseConfigured() || localMode;
+  const forceDemo = options.forceMode === "demo";
+  const useLiveData = options.forceMode === "live" ? true : !forceDemo && firebaseAuto;
+
+  const firebase = useFirebaseReports(useLiveData);
+  const sim = useLiveSimulation({ forceDemo: !useLiveData });
 
   return useMemo(() => {
     const base = {
       toggleLive: sim.toggleLive,
       seedBurst: sim.seedBurst,
-      phones: sim.phones,
       firebaseConnected: firebase.connected,
       firebaseError: firebase.error,
       firebaseSource: firebase.source,
     };
 
-    if (!firebaseEnabled) {
+    if (!useLiveData) {
       const checkIns = eventsToCheckIns(sim.events);
       const checkInsByRoom = groupCheckInsByRoom(checkIns);
       const demoStats = buildRoomEvacStatsMap(sim.unaccountedIds, checkInsByRoom);
+      const studentDots = dotsFromDemoEvents(sim.events, sim.unaccountedIds, sim.walkers);
 
       return {
         ...base,
@@ -88,6 +167,7 @@ export function useAdminLiveData() {
         safeCount: sim.safeCount,
         unsafeCount: sim.unsafeCount,
         missingStudents: unaccountedToStudents(sim.unaccountedIds),
+        studentDots,
         lastTick: sim.lastTick,
         isLive: sim.isLive,
       };
@@ -114,6 +194,8 @@ export function useAdminLiveData() {
           : tr.inputMode === "voice"
             ? "Voice roll call"
             : "Roster submitted",
+      rawText: tr.transcript?.trim() || tr.note?.trim() || undefined,
+      source: "teacher",
     }));
 
     const missingByTeacher = new Map<string, RoomStudent>();
@@ -138,6 +220,12 @@ export function useAdminLiveData() {
       },
     );
 
+    const studentDots = dotsFromFirebase(
+      firebase.reports,
+      evac.teacherByRoom,
+      evac.unaccountedIds,
+    );
+
     return {
       ...base,
       mode: localMode ? ("local" as const) : ("firebase" as const),
@@ -151,6 +239,7 @@ export function useAdminLiveData() {
       safeCount: stats.safeCount,
       unsafeCount: stats.unsafeCount,
       missingStudents: unaccountedStudents(evac.unaccountedIds),
+      studentDots,
       lastTick:
         firebase.reports[0] != null
           ? formatTime(new Date(firebase.reports[0].updatedAt))
@@ -159,7 +248,7 @@ export function useAdminLiveData() {
             : sim.lastTick,
       isLive: sim.isLive,
     };
-  }, [firebaseEnabled, localMode, firebase, sim]);
+  }, [useLiveData, localMode, firebase, sim]);
 }
 
 export type { RoomEvacStats, TeacherRoomSnapshot };

@@ -2,11 +2,24 @@
 
 import { useMemo } from "react";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
+import type { CheckInEvent } from "@/hooks/use-live-simulation";
+
+const SHOOTER_PATTERN =
+  /\b(shooter|shooters|gunman|gunmen|gunwoman|gun|guns|firearm|firearms|weapon|weapons|armed|attacker|attackers|intruder|intruders|active\s+shooter)\b/i;
+
+function mentionsShooter(event: CheckInEvent): boolean {
+  const haystack = [event.rawText, event.note].filter(Boolean).join(" \n ");
+  return haystack.length > 0 && SHOOTER_PATTERN.test(haystack);
+}
 
 export function ResponderDashboard() {
   const live = useAdminLiveData();
   const unsafeReports = useMemo(
     () => live.events.filter((event) => event.status === "unsafe"),
+    [live.events],
+  );
+  const shooterReports = useMemo(
+    () => live.events.filter(mentionsShooter),
     [live.events],
   );
 
@@ -55,6 +68,46 @@ export function ResponderDashboard() {
           </ul>
         </Panel>
       </section>
+
+      <Panel title="Shooter reports" className="mt-4">
+        <p className="border-b border-[#1a212b] px-3 py-2 text-[10px] text-[#64748b]">
+          Original text from any teacher or student whose update mentioned a shooter, gunman, weapon, or intruder.
+        </p>
+        <ul className="max-h-96 overflow-y-auto">
+          {shooterReports.map((event) => {
+            const original = event.rawText ?? event.note ?? "(no text recorded)";
+            const roleLabel = event.source === "teacher" ? "Teacher" : "Student";
+            return (
+              <li key={event.id} className="border-b border-[#1a212b] px-3 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#f1f5f9]">
+                      {event.student.name}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-[#64748b]">
+                      {roleLabel}
+                      {event.roomNumber && event.roomNumber !== "Off campus"
+                        ? ` · Rm ${event.roomNumber}`
+                        : ""}
+                    </p>
+                  </div>
+                  <time className="font-mono text-[10px] tabular-nums text-[#64748b]">
+                    {event.at}
+                  </time>
+                </div>
+                <blockquote className="mt-2 rounded border border-rose-900/40 bg-rose-950/20 px-3 py-2 text-xs italic text-rose-100">
+                  &ldquo;{original}&rdquo;
+                </blockquote>
+              </li>
+            );
+          })}
+          {shooterReports.length === 0 ? (
+            <li className="px-3 py-8 text-center text-xs text-[#64748b]">
+              No shooter mentions in current reports.
+            </li>
+          ) : null}
+        </ul>
+      </Panel>
 
       <Panel title="Timestamped report feed" className="mt-4">
         <ul className="max-h-96 overflow-y-auto">
