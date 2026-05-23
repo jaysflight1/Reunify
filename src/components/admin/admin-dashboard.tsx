@@ -6,6 +6,7 @@ import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { CampusMap } from "./campus-map";
+import { BroadcastGenerator } from "./broadcast-generator";
 import { ConflictList } from "./conflict-list";
 import { LiveFeed } from "./live-feed";
 import { MissingPanel } from "./missing-panel";
@@ -153,6 +154,7 @@ export function AdminDashboard() {
               <StudentStatusTable records={studentRecords} onSelect={setSelectedRecord} />
             </div>
             <div className="grid gap-3">
+              <BroadcastGenerator />
               <ReportFeed events={live.events} />
               <ConflictList records={studentRecords} />
             </div>
