@@ -61,6 +61,7 @@ export async function submitTeacherRoomReport(input: TeacherReportSubmit): Promi
       note: input.note?.trim() || null,
       transcript: input.transcript?.trim() || null,
       inputMode: input.inputMode,
+      archived: false,
       updatedAt: serverTimestamp(),
     };
 

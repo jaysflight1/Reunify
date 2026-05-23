@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { clearLocalReports } from "@/lib/check-in/local-report-store";
+import { archiveLocalReports } from "@/lib/check-in/local-report-store";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import {
-  clearDrillReportsAdmin,
+  archiveDrillReportsAdmin,
   firebaseAdminConfigError,
   isFirebaseAdminConfigured,
 } from "@/lib/firebase/admin";
@@ -10,7 +10,7 @@ import { ACTIVE_DRILL_ID } from "@/lib/firebase/config";
 
 export async function POST() {
   if (isLocalCheckInMode()) {
-    const counts = clearLocalReports();
+    const counts = archiveLocalReports();
     return NextResponse.json({
       ok: true,
       drillId: ACTIVE_DRILL_ID,
@@ -29,7 +29,7 @@ export async function POST() {
   }
 
   try {
-    const counts = await clearDrillReportsAdmin(ACTIVE_DRILL_ID);
+    const counts = await archiveDrillReportsAdmin(ACTIVE_DRILL_ID);
     return NextResponse.json({
       ok: true,
       drillId: ACTIVE_DRILL_ID,
@@ -37,7 +37,7 @@ export async function POST() {
       ...counts,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Clear failed";
+    const message = e instanceof Error ? e.message : "Reset failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -79,6 +79,10 @@ export function requireAdminAuth(): Auth {
   return auth;
 }
 
+function isArchivedDoc(data: FirebaseFirestore.DocumentData): boolean {
+  return data.archived === true;
+}
+
 export async function fetchDrillReportsAdmin(
   drillId: string = ACTIVE_DRILL_ID,
 ): Promise<StudentReport[]> {
@@ -88,7 +92,9 @@ export async function fetchDrillReportsAdmin(
   // Single-field filter — no composite index required (sort in memory).
   const snap = await db.collection("reports").where("drillId", "==", drillId).get();
 
-  const reports = snap.docs.map((d) => {
+  const reports = snap.docs
+    .filter((d) => !isArchivedDoc(d.data()))
+    .map((d) => {
     const data = d.data();
     const createdAt = data.createdAt?.toMillis?.() ?? Date.now();
     const updatedAt = data.updatedAt?.toMillis?.() ?? createdAt;
@@ -123,6 +129,7 @@ export async function fetchTeacherReportsAdmin(
   const snap = await db.collection("teacherReports").where("drillId", "==", drillId).get();
 
   return snap.docs
+    .filter((d) => !isArchivedDoc(d.data()))
     .map((d) => mapTeacherDoc(d.id, d.data()))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -167,12 +174,13 @@ export async function seedFirestoreCatalog(
 
 const FIRESTORE_BATCH_LIMIT = 500;
 
-async function deleteQueryDocs(
+/** Hide live check-ins from the dashboard; prior reports remain in Firestore. */
+async function archiveQueryDocs(
   db: Firestore,
   collectionName: string,
   drillId: string,
 ): Promise<number> {
-  let deleted = 0;
+  let archived = 0;
 
   while (true) {
     const snap = await db
@@ -184,27 +192,33 @@ async function deleteQueryDocs(
     if (snap.empty) break;
 
     const batch = db.batch();
+    let batchCount = 0;
     for (const doc of snap.docs) {
-      batch.delete(doc.ref);
+      if (isArchivedDoc(doc.data())) continue;
+      batch.update(doc.ref, { archived: true, archivedAt: new Date() });
+      batchCount += 1;
     }
-    await batch.commit();
-    deleted += snap.docs.length;
+
+    if (batchCount > 0) {
+      await batch.commit();
+      archived += batchCount;
+    }
 
     if (snap.size < FIRESTORE_BATCH_LIMIT) break;
   }
 
-  return deleted;
+  return archived;
 }
 
-/** Remove all student and teacher check-ins for a drill (demo reset). */
-export async function clearDrillReportsAdmin(
+/** Archive student and teacher check-ins for a drill (demo reset, data preserved). */
+export async function archiveDrillReportsAdmin(
   drillId: string = ACTIVE_DRILL_ID,
 ): Promise<{ studentReports: number; teacherReports: number }> {
   const db = requireAdminDb();
 
   const [studentReports, teacherReports] = await Promise.all([
-    deleteQueryDocs(db, "reports", drillId),
-    deleteQueryDocs(db, "teacherReports", drillId),
+    archiveQueryDocs(db, "reports", drillId),
+    archiveQueryDocs(db, "teacherReports", drillId),
   ]);
 
   return { studentReports, teacherReports };

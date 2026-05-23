@@ -5,9 +5,13 @@ import {
   DEMO_CLASS_47_ID,
   DEMO_GYM_ID,
   DEMO_INCIDENT_ID,
+  DEMO_PARENT_ANN_ROY_ID,
   DEMO_PICKUP_ZONE_B_ID,
   DEMO_ROOM_44_ID,
+  DEMO_ROOM_602_ID,
   DEMO_SCHOOL_ID,
+  DEMO_STUDENT_JAY_ROY_ID,
+  DEMO_CLASS_602_ID,
 } from "../src/lib/demo/constants";
 import { EXAMPLE_STUDENTS, exampleStudentByName } from "../src/lib/demo/example-students";
 import type { AppUser, UserRole } from "../src/types/user";
@@ -53,8 +57,18 @@ function makeStudent(example: (typeof EXAMPLE_STUDENTS)[number], classIds: strin
     grade: example.grade,
     classIds,
     primaryClassId: classIds[0],
-    parentGuardianIds: example.fullName === "Alyssa Wang" ? [DEMO_APP_USERS.parent] : [],
-    authorizedPickupGuardianIds: example.fullName === "Alyssa Wang" ? [DEMO_APP_USERS.parent] : [],
+    parentGuardianIds:
+      example.fullName === "Alyssa Wang"
+        ? [DEMO_APP_USERS.parent]
+        : example.fullName === "Jay Roy"
+          ? [DEMO_PARENT_ANN_ROY_ID]
+          : [],
+    authorizedPickupGuardianIds:
+      example.fullName === "Alyssa Wang"
+        ? [DEMO_APP_USERS.parent]
+        : example.fullName === "Jay Roy"
+          ? [DEMO_PARENT_ANN_ROY_ID]
+          : [],
     createdAt: NOW,
     updatedAt: NOW,
   };
@@ -81,6 +95,9 @@ function buildSeedData(): SeedData {
   const cafeteriaClassIds = EXAMPLE_STUDENTS.slice(52).map((student) => student.id);
 
   const students = EXAMPLE_STUDENTS.map((student, index) => {
+    if (student.fullName === "Jay Roy") {
+      return makeStudent(student, [DEMO_CLASS_602_ID]);
+    }
     const classId =
       index < 27 ? classIds[0]! : index < 42 ? classIds[1]! : index < 52 ? classIds[2]! : classIds[3]!;
     return makeStudent(student, [classId]);
@@ -126,6 +143,16 @@ function buildSeedData(): SeedData {
       studentIds: cafeteriaClassIds,
       roomId: "cafeteria",
       roomLabel: "Cafeteria",
+    },
+    {
+      id: DEMO_CLASS_602_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      name: "Room 602",
+      teacherUserId: "demo-teacher-ms-ross",
+      teacherName: "Ms. Ross",
+      studentIds: [studentIdForName("Jay Roy")],
+      roomId: DEMO_ROOM_602_ID,
+      roomLabel: "Room 602",
     },
   ];
 
@@ -200,6 +227,16 @@ function buildSeedData(): SeedData {
       x: 12,
       y: 86,
     },
+    {
+      id: DEMO_ROOM_602_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      label: "Room 602",
+      zone: "600 Wing",
+      type: "classroom",
+      parentSafeLabel: "with school staff",
+      x: 82,
+      y: 8,
+    },
   ];
 
   const users: AppUser[] = [
@@ -210,6 +247,36 @@ function buildSeedData(): SeedData {
       linkedStudentIds: [studentIdForName("Alyssa Wang")],
     }),
     makeUser("responder", "Demo Responder"),
+    {
+      id: DEMO_STUDENT_JAY_ROY_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      role: "student",
+      displayName: "Jay Roy",
+      linkedStudentId: studentIdForName("Jay Roy"),
+      isDemoUser: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
+    {
+      id: DEMO_PARENT_ANN_ROY_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      role: "parent",
+      displayName: "Ann Roy",
+      linkedStudentIds: [studentIdForName("Jay Roy")],
+      isDemoUser: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
+    {
+      id: "demo-teacher-ms-ross",
+      schoolId: DEMO_SCHOOL_ID,
+      role: "teacher",
+      displayName: "Ms. Ross",
+      assignedClassIds: [DEMO_CLASS_602_ID],
+      isDemoUser: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
   ];
 
   const incident: Incident = {

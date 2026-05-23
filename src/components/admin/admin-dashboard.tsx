@@ -94,7 +94,7 @@ export function AdminDashboard() {
 
   const handleClearLiveData = useCallback(async () => {
     const confirmed = window.confirm(
-      "Clear all real check-ins for this drill?\n\nThis deletes every student report and teacher roll call. Room catalog and drill metadata are kept. Use this before a fresh demo.",
+      "Reset the live dashboard for a fresh demo?\n\nCurrent check-ins will be hidden from the admin view but kept in Firebase (archived). New student and teacher submissions will show up normally.",
     );
     if (!confirmed) return;
 
@@ -109,17 +109,17 @@ export function AdminDashboard() {
         error?: string;
       };
       if (!res.ok) {
-        setClearMessage(json.error ?? "Could not clear check-ins");
+        setClearMessage(json.error ?? "Could not reset dashboard");
         return;
       }
       const total = (json.studentReports ?? 0) + (json.teacherReports ?? 0);
       setClearMessage(
         total > 0
-          ? `Cleared ${json.studentReports ?? 0} student and ${json.teacherReports ?? 0} teacher report(s).`
-          : "No check-ins to clear — dashboard is already empty.",
+          ? `Archived ${json.studentReports ?? 0} student and ${json.teacherReports ?? 0} teacher report(s) for demo. Prior data is still in Firebase.`
+          : "Dashboard is already empty — nothing to archive.",
       );
     } catch {
-      setClearMessage("Clear request failed");
+      setClearMessage("Reset request failed");
     } finally {
       setClearingLiveData(false);
     }

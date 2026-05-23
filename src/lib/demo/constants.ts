@@ -16,3 +16,8 @@ export const DEMO_ROOM_44_ID = "room-44";
 export const DEMO_GYM_ID = "gym";
 export const DEMO_PICKUP_ZONE_B_ID = "pickup-zone-b";
 
+export const DEMO_STUDENT_JAY_ROY_ID = "demo-student-jay-roy";
+export const DEMO_PARENT_ANN_ROY_ID = "demo-parent-ann-roy";
+export const DEMO_ROOM_602_ID = "room-602";
+export const DEMO_CLASS_602_ID = "class-602";
+

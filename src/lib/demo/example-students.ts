@@ -67,11 +67,18 @@ const EXAMPLE_STUDENT_NAMES = [
   "Tessa Brooks",
 ];
 
-export const EXAMPLE_STUDENTS: ExampleStudent[] = EXAMPLE_STUDENT_NAMES.map((fullName, index) => ({
-  id: `LAHS-${String(index + 1001).padStart(4, "0")}`,
-  fullName,
-  grade: String(9 + (index % 4)),
-}));
+const EXTRA_EXAMPLE_STUDENTS: ExampleStudent[] = [
+  { id: "student-jay-roy", fullName: "Jay Roy", grade: "10" },
+];
+
+export const EXAMPLE_STUDENTS: ExampleStudent[] = [
+  ...EXAMPLE_STUDENT_NAMES.map((fullName, index) => ({
+    id: `LAHS-${String(index + 1001).padStart(4, "0")}`,
+    fullName,
+    grade: String(9 + (index % 4)),
+  })),
+  ...EXTRA_EXAMPLE_STUDENTS,
+];
 
 export function exampleStudentByName(fullName: string): ExampleStudent | undefined {
   return EXAMPLE_STUDENTS.find((student) => student.fullName === fullName);

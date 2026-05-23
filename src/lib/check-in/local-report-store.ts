@@ -11,6 +11,8 @@ import type {
 type LocalStore = {
   studentReports: Map<string, StudentReport>;
   teacherReports: Map<string, TeacherRoomReport>;
+  archivedStudentReports: Map<string, StudentReport>;
+  archivedTeacherReports: Map<string, TeacherRoomReport>;
 };
 
 declare global {
@@ -23,9 +25,16 @@ function store(): LocalStore {
     globalThis.__reunifyLocalReportStore = {
       studentReports: new Map(),
       teacherReports: new Map(),
+      archivedStudentReports: new Map(),
+      archivedTeacherReports: new Map(),
     };
   }
-  return globalThis.__reunifyLocalReportStore;
+  const s = globalThis.__reunifyLocalReportStore;
+  if (!s.archivedStudentReports) {
+    s.archivedStudentReports = new Map();
+    s.archivedTeacherReports = new Map();
+  }
+  return s;
 }
 
 function studentDocId(studentId: string): string {
@@ -68,7 +77,9 @@ export function upsertLocalStudentReport(input: StudentReportInput): StudentRepo
   if (existing) {
     report.createdAt = existing.createdAt;
   }
-  store().studentReports.set(id, report);
+  const s = store();
+  s.archivedStudentReports.delete(id);
+  s.studentReports.set(id, report);
   return report;
 }
 
@@ -95,7 +106,9 @@ export function upsertLocalTeacherReport(input: TeacherReportSubmit): TeacherRoo
     updatedAt: now,
   };
 
-  store().teacherReports.set(id, report);
+  const s = store();
+  s.archivedTeacherReports.delete(id);
+  s.teacherReports.set(id, report);
   return report;
 }
 
@@ -107,7 +120,7 @@ export function listLocalTeacherReports(): TeacherRoomReport[] {
   return [...store().teacherReports.values()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export function clearLocalReports(): {
+export function archiveLocalReports(): {
   studentReports: number;
   teacherReports: number;
 } {
@@ -116,6 +129,14 @@ export function clearLocalReports(): {
     studentReports: s.studentReports.size,
     teacherReports: s.teacherReports.size,
   };
+
+  for (const [id, report] of s.studentReports) {
+    s.archivedStudentReports.set(id, report);
+  }
+  for (const [id, report] of s.teacherReports) {
+    s.archivedTeacherReports.set(id, report);
+  }
+
   s.studentReports.clear();
   s.teacherReports.clear();
   return counts;

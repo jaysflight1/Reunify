@@ -18,6 +18,7 @@ import {
   getClientFirestore,
   isFirebaseConfigured,
 } from "./config";
+import { isReportArchived } from "./report-archive";
 import type { StudentReport, StudentReportInput } from "./types";
 
 const REPORTS = "reports";
@@ -117,6 +118,7 @@ export async function submitStudentReport(input: StudentReportInput): Promise<vo
       teacherName: offCampus ? "" : input.teacherName.trim(),
       location: input.location,
       note: input.note?.trim() || null,
+      archived: false,
       updatedAt: serverTimestamp(),
     };
 
@@ -148,7 +150,11 @@ export function subscribeToDrillReports(
   return onSnapshot(
     q,
     (snap) => {
-      onData(snap.docs.map((d) => mapDoc(d.id, d.data())));
+      onData(
+        snap.docs
+          .filter((d) => !isReportArchived(d.data()))
+          .map((d) => mapDoc(d.id, d.data())),
+      );
     },
     (err) => onError(err),
   );

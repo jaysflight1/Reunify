@@ -58,10 +58,15 @@ function hash(s: string): number {
   return h;
 }
 
+/** Real/demo students appended to a room's generated roster. */
+const ROOM_ROSTER_ADDITIONS: Record<string, RoomStudent[]> = {
+  "602": [{ id: "student-jay-roy", name: "Jay Roy", grade: "10" }],
+};
+
 export function rosterForRoom(roomNumber: string, size = 6): RoomStudent[] {
   const base = hash(roomNumber);
   const grades = ["9", "10", "11", "12"];
-  return Array.from({ length: size }, (_, i) => {
+  const generated = Array.from({ length: size }, (_, i) => {
     const fi = (base + i * 7) % FIRST.length;
     const li = (base + i * 11) % LAST.length;
     const gi = (base + i) % grades.length;
@@ -71,4 +76,5 @@ export function rosterForRoom(roomNumber: string, size = 6): RoomStudent[] {
       grade: grades[gi]!,
     };
   });
+  return [...generated, ...(ROOM_ROSTER_ADDITIONS[roomNumber] ?? [])];
 }

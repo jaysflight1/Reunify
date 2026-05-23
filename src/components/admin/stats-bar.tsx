@@ -118,10 +118,10 @@ export function StatsBar({
               type="button"
               onClick={onClearLiveData}
               disabled={clearingLiveData}
-              title="Delete all student check-ins and teacher roll calls for this drill"
+              title="Archive current check-ins and show an empty dashboard for demo (data kept in Firebase)"
               className="rounded border border-rose-900/50 bg-rose-950/30 px-2.5 py-1 text-[10px] font-medium text-rose-300 transition hover:border-rose-800/60 hover:bg-rose-950/50 disabled:opacity-50"
             >
-              {clearingLiveData ? "Clearing…" : "Clear all"}
+              {clearingLiveData ? "Resetting…" : "Reset demo"}
             </button>
           ) : null}
           <button

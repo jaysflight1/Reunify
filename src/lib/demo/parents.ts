@@ -54,9 +54,20 @@ const MANUAL_PARENTS: DemoParent[] = [
       { id: "student-alyssa-wang", name: "Alyssa Wang", grade: "9" },
     ],
   },
+  {
+    id: "parent-of-jay-roy",
+    fullName: "Ann Roy",
+    children: [{ id: "student-jay-roy", name: "Jay Roy", grade: "10" }],
+  },
 ];
 
-const generatedParents: DemoParent[] = ALL_ROSTER_STUDENTS.map((student, index) => {
+const manualChildIds = new Set(
+  MANUAL_PARENTS.flatMap((parent) => parent.children.map((child) => child.id)),
+);
+
+const generatedParents: DemoParent[] = ALL_ROSTER_STUDENTS.filter(
+  (student) => !manualChildIds.has(student.id),
+).map((student, index) => {
   const firstIdx = (hash(student.id) + index * 13) % PARENT_FIRST_NAMES.length;
   const first = PARENT_FIRST_NAMES[firstIdx]!;
   const last = lastName(student.name);
