@@ -12,7 +12,7 @@ export default function Home() {
       </p>
       <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
         <Link
-          href="/check-in"
+          href="/student"
           className="rounded-xl bg-[#e2e8f0] py-4 text-center text-base font-semibold text-[#0c0f13]"
         >
           Student check-in
