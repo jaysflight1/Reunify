@@ -60,7 +60,7 @@ function hash(s: string): number {
 
 /** Real/demo students appended to a room's generated roster. */
 const ROOM_ROSTER_ADDITIONS: Record<string, RoomStudent[]> = {
-  "602": [{ id: "student-jay-roy", name: "Jay Roy", grade: "10" }],
+  "602": [{ id: "LAHS-1061", name: "Jay Roy", grade: "10" }],
 };
 
 export function rosterForRoom(roomNumber: string, size = 6): RoomStudent[] {

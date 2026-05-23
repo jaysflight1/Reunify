@@ -68,7 +68,7 @@ const EXAMPLE_STUDENT_NAMES = [
 ];
 
 const EXTRA_EXAMPLE_STUDENTS: ExampleStudent[] = [
-  { id: "student-jay-roy", fullName: "Jay Roy", grade: "10" },
+  { id: "LAHS-1061", fullName: "Jay Roy", grade: "10" },
 ];
 
 export const EXAMPLE_STUDENTS: ExampleStudent[] = [

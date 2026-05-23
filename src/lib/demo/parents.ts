@@ -57,7 +57,7 @@ const MANUAL_PARENTS: DemoParent[] = [
   {
     id: "parent-of-jay-roy",
     fullName: "Ann Roy",
-    children: [{ id: "student-jay-roy", name: "Jay Roy", grade: "10" }],
+    children: [{ id: "LAHS-1061", name: "Jay Roy", grade: "10" }],
   },
 ];
 
