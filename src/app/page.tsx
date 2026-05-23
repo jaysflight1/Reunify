@@ -35,6 +35,12 @@ export default function Home() {
         >
           Parent portal
         </Link>
+        <Link
+          href="/responder"
+          className="rounded-xl border border-[#2a3340] py-4 text-center text-base font-medium text-[#94a3b8]"
+        >
+          Responder view
+        </Link>
       </div>
     </div>
   );
