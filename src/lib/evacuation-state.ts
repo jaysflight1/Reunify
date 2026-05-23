@@ -1,7 +1,6 @@
 import { ALL_ROSTER_STUDENTS, getMissingInRoom, LAHS_ROOMS, type LahsRoom, type RoomStudent } from "@/lib/lahs-rooms";
 import type { StudentReport, TeacherRoomReport } from "@/lib/firebase/types";
 import {
-  buildRoomEvacStatsMap,
   groupCheckInsByRoom,
   type RoomCheckIn,
   type RoomEvacStats,

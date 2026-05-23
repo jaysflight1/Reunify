@@ -84,7 +84,6 @@ export function useFirebaseReports(enabled: boolean): FirebaseReportsState {
 
     let cancelled = false;
     let unsub: (() => void) | undefined;
-    let pollId: ReturnType<typeof setInterval> | undefined;
 
     const startClientListener = () => {
       if (!shouldUseClientListener()) return;
@@ -134,7 +133,7 @@ export function useFirebaseReports(enabled: boolean): FirebaseReportsState {
       }
     })();
 
-    pollId = setInterval(() => void loadFromApi(), POLL_MS);
+    const pollId = setInterval(() => void loadFromApi(), POLL_MS);
 
     return () => {
       cancelled = true;
