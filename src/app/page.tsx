@@ -29,6 +29,12 @@ export default function Home() {
         >
           Staff command center
         </Link>
+        <Link
+          href="/parent"
+          className="rounded-xl border border-[#2a3340] py-4 text-center text-base font-medium text-[#94a3b8]"
+        >
+          Parent portal
+        </Link>
       </div>
     </div>
   );
