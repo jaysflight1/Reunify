@@ -9,7 +9,7 @@ export default function ParentPage() {
         </p>
         <h1 className="mt-1 text-xl font-semibold text-[#f8fafc]">Parent portal</h1>
         <p className="mt-2 text-sm leading-relaxed text-[#94a3b8]">
-          View your linked child and parent-safe school messages.
+          Look up your name to see your child&rsquo;s current emergency status.
         </p>
       </header>
 

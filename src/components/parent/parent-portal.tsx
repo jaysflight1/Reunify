@@ -1,106 +1,270 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DEMO_APP_USERS } from "@/lib/demo/constants";
-import { DEMO_AUTH_HEADER, DEMO_USER_STORAGE_KEY } from "@/lib/auth/demo-users";
-import type { Broadcast, ParentSafeStudentStatus } from "@/types/incident";
+import { useMemo, useState } from "react";
+import { useAdminLiveData } from "@/hooks/use-admin-live-data";
+import type { CheckInEvent } from "@/hooks/use-live-simulation";
+import { getRoomByNumber, type RoomStudent } from "@/lib/lahs-rooms";
+import {
+  demoParentById,
+  findDemoParents,
+  type DemoParent,
+} from "@/lib/demo/parents";
 
-type ParentChildrenStatusResponse = {
-  children: ParentSafeStudentStatus[];
-  parentBroadcasts: Broadcast[];
-  error?: string;
+type ChildStatus = "safe" | "unsafe" | "unaccounted" | "unknown";
+
+type ChildView = {
+  student: RoomStudent;
+  status: ChildStatus;
+  latestEvent: CheckInEvent | null;
+  roomLabel: string | null;
+  roomBuilding: string | null;
+  teacherName: string | null;
+  lastUpdate: string | null;
+  note: string | null;
 };
 
-function demoUserId(): string {
-  if (typeof window === "undefined") return DEMO_APP_USERS.parent;
-  return window.localStorage.getItem(DEMO_USER_STORAGE_KEY) ?? DEMO_APP_USERS.parent;
+const STATUS_BADGE: Record<ChildStatus, { label: string; className: string }> = {
+  safe: {
+    label: "Safe",
+    className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  },
+  unsafe: {
+    label: "Needs help",
+    className: "border-rose-500/40 bg-rose-500/10 text-rose-300",
+  },
+  unaccounted: {
+    label: "Unaccounted",
+    className: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  },
+  unknown: {
+    label: "No update yet",
+    className: "border-slate-500/40 bg-slate-500/10 text-slate-300",
+  },
+};
+
+const STATUS_MESSAGE: Record<ChildStatus, string> = {
+  safe: "Your child has been marked safe in their classroom.",
+  unsafe:
+    "Your child reported they need help. Staff and responders have been notified.",
+  unaccounted:
+    "Your child has not checked in yet. Their teacher's roll call is in progress.",
+  unknown:
+    "No check-in or roll call has reached the system for your child yet.",
+};
+
+function buildChildView(
+  student: RoomStudent,
+  events: CheckInEvent[],
+  unaccountedIds: ReadonlySet<string>,
+): ChildView {
+  const latestEvent = events.find((event) => event.student.id === student.id) ?? null;
+
+  let status: ChildStatus = "unknown";
+  if (latestEvent?.status === "unsafe") status = "unsafe";
+  else if (latestEvent?.status === "safe") status = "safe";
+  else if (unaccountedIds.has(student.id)) status = "unaccounted";
+
+  const roomNumber = latestEvent?.roomNumber ?? null;
+  const room = roomNumber ? getRoomByNumber(roomNumber) : undefined;
+
+  return {
+    student,
+    status,
+    latestEvent,
+    roomLabel: roomNumber
+      ? room
+        ? `Room ${room.number} · ${room.label}`
+        : roomNumber
+      : null,
+    roomBuilding: room?.building ?? null,
+    teacherName: latestEvent?.teacherName ?? room?.teacher ?? null,
+    lastUpdate: latestEvent?.at ?? null,
+    note: latestEvent?.note ?? null,
+  };
 }
 
 export function ParentPortal() {
-  const [data, setData] = useState<ParentChildrenStatusResponse | null>(null);
-  const [eta, setEta] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const live = useAdminLiveData();
+  const [query, setQuery] = useState("");
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch("/api/me/children-status", {
-          cache: "no-store",
-          headers: { [DEMO_AUTH_HEADER]: demoUserId() },
-        });
-        const json = (await response.json()) as ParentChildrenStatusResponse;
-        if (!response.ok) throw new Error(json.error ?? "Could not load child status.");
-        setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not load child status.");
-      }
-    })();
-  }, []);
+  const matches = useMemo(() => findDemoParents(query), [query]);
+  const selectedParent = useMemo<DemoParent | null>(
+    () => demoParentById(selectedParentId),
+    [selectedParentId],
+  );
+
+  const children = useMemo<ChildView[]>(() => {
+    if (!selectedParent) return [];
+    return selectedParent.children.map((child) =>
+      buildChildView(child, live.events, live.unaccountedIds),
+    );
+  }, [selectedParent, live.events, live.unaccountedIds]);
+
+  const handleSelect = (parent: DemoParent) => {
+    setSelectedParentId(parent.id);
+    setQuery(parent.fullName);
+  };
+
+  const handleChange = () => {
+    setSelectedParentId(null);
+    setQuery("");
+  };
 
   return (
-    <div>
-      <div className="grid gap-3">
-        {data?.children.map((child) => (
-          <article key={child.studentId} className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-[#f8fafc]">{child.studentName}</h2>
-                <p className="mt-1 text-sm text-[#94a3b8]">{child.parentSafeMessage}</p>
-              </div>
-              <span className="rounded border border-[#2a3340] px-2 py-1 text-xs text-[#e2e8f0]">
-                {child.publicParentStatus.replaceAll("_", " ")}
-              </span>
-            </div>
-            <p className="mt-3 text-xs text-[#64748b]">
-              Last update: {child.lastUpdatedAt || "No verified update yet"}
-            </p>
-            {child.pickupInstructions ? (
-              <p className="mt-3 rounded border border-[#2a3340] bg-[#06080a] px-3 py-2 text-sm text-[#e2e8f0]">
-                {child.pickupInstructions}
-              </p>
-            ) : null}
-          </article>
-        ))}
-        {data && data.children.length === 0 ? (
-          <p className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-6 text-center text-sm text-[#64748b]">
-            No children are linked to this parent account.
+    <div className="space-y-6">
+      <section className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
+        <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-[#64748b]">
+          Look up your name
+        </label>
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              if (selectedParentId) setSelectedParentId(null);
+            }}
+            placeholder="Start typing your full name"
+            className="min-w-0 flex-1 rounded-lg border border-[#2a3340] bg-[#06080a] px-3 py-2 text-sm text-[#f8fafc] outline-none focus:border-sky-700"
+            autoComplete="off"
+          />
+          {selectedParent ? (
+            <button
+              type="button"
+              onClick={handleChange}
+              className="rounded-lg border border-[#2a3340] px-3 py-2 text-sm text-[#e2e8f0] hover:bg-[#11161d]"
+            >
+              Change
+            </button>
+          ) : null}
+        </div>
+
+        {!selectedParent && query.trim() ? (
+          <ul className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-[#232a35] bg-[#06080a]">
+            {matches.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-[#64748b]">
+                No parent records match &ldquo;{query}&rdquo;.
+              </li>
+            ) : (
+              matches.map((parent) => (
+                <li key={parent.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(parent)}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-[#e2e8f0] hover:bg-[#11161d]"
+                  >
+                    <span>{parent.fullName}</span>
+                    <span className="text-[11px] text-[#64748b]">
+                      {parent.children.length} child
+                      {parent.children.length === 1 ? "" : "ren"}
+                    </span>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
+
+        {!selectedParent && !query.trim() ? (
+          <p className="mt-3 text-xs text-[#64748b]">
+            Search for your name to see your child&rsquo;s current status. Demo
+            data only — no real records are stored.
           </p>
         ) : null}
-      </div>
-
-      <section className="mt-4 rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
-        <h2 className="text-sm font-semibold text-[#e2e8f0]">Pickup ETA</h2>
-        <div className="mt-3 flex gap-2">
-          <input
-            value={eta}
-            onChange={(event) => setEta(event.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-[#2a3340] bg-[#06080a] px-3 py-2 text-sm text-[#f8fafc]"
-            placeholder="Example: 20 minutes"
-          />
-          <button
-            type="button"
-            className="rounded-lg border border-[#2a3340] px-3 py-2 text-sm text-[#e2e8f0]"
-            onClick={() => setEta("")}
-          >
-            Save
-          </button>
-        </div>
       </section>
 
-      {data?.parentBroadcasts.length ? (
-        <section className="mt-4 rounded-xl border border-[#232a35] bg-[#0c0f13] p-4">
-          <h2 className="text-sm font-semibold text-[#e2e8f0]">School updates</h2>
-          <ul className="mt-3 space-y-2">
-            {data.parentBroadcasts.map((broadcast) => (
-              <li key={broadcast.id} className="text-sm text-[#94a3b8]">
-                {broadcast.message}
-              </li>
-            ))}
-          </ul>
+      {selectedParent ? (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#64748b]">
+              Signed in as
+            </p>
+            <p className="text-sm text-[#e2e8f0]">{selectedParent.fullName}</p>
+          </div>
+
+          {children.map((child) => {
+            const badge = STATUS_BADGE[child.status];
+            return (
+              <article
+                key={child.student.id}
+                className="rounded-xl border border-[#232a35] bg-[#0c0f13] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-[#f8fafc]">
+                      {child.student.name}
+                    </h2>
+                    <p className="mt-1 text-xs text-[#64748b]">
+                      Grade {child.student.grade} · ID {child.student.id}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded border px-2 py-1 text-xs font-medium ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+
+                <p className="mt-3 text-sm text-[#94a3b8]">
+                  {STATUS_MESSAGE[child.status]}
+                </p>
+
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wider text-[#64748b]">
+                      Last known location
+                    </dt>
+                    <dd className="mt-1 text-[#f1f5f9]">
+                      {child.roomLabel ?? "Not yet reported"}
+                    </dd>
+                    {child.roomBuilding ? (
+                      <dd className="mt-1 text-xs text-[#64748b]">
+                        {child.roomBuilding}
+                      </dd>
+                    ) : null}
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wider text-[#64748b]">
+                      Teacher
+                    </dt>
+                    <dd className="mt-1 text-[#f1f5f9]">
+                      {child.teacherName ?? "Not yet reported"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wider text-[#64748b]">
+                      Last update
+                    </dt>
+                    <dd className="mt-1 text-[#f1f5f9]">
+                      {child.lastUpdate ?? "Waiting on first check-in"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wider text-[#64748b]">
+                      Reported by
+                    </dt>
+                    <dd className="mt-1 text-[#f1f5f9]">
+                      {child.latestEvent
+                        ? child.latestEvent.id.startsWith("tm-") ||
+                          child.latestEvent.id.startsWith("t-")
+                          ? "Teacher roll call"
+                          : "Student check-in"
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+
+                {child.note ? (
+                  <p className="mt-4 rounded border border-[#2a3340] bg-[#06080a] px-3 py-2 text-sm text-[#e2e8f0]">
+                    Note: {child.note}
+                  </p>
+                ) : null}
+              </article>
+            );
+          })}
         </section>
       ) : null}
-
-      {error ? <p className="mt-4 text-sm text-rose-400">{error}</p> : null}
     </div>
   );
 }
