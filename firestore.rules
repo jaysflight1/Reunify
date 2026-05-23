@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Room directory — students read for dropdown; writes only via Admin SDK seed
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Active drill metadata — students may read
+    match /drills/{drillId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Student check-in reports — read/write own doc only (staff uses Admin API)
+    match /reports/{reportId} {
+      allow read: if request.auth != null
+        && (resource == null || resource.data.studentUid == request.auth.uid);
+
+      allow create, update: if request.auth != null
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.drillId is string
+        && request.resource.data.studentName is string
+        && request.resource.data.studentName.size() > 0
+        && request.resource.data.studentName.size() < 120
+        && request.resource.data.studentId is string
+        && request.resource.data.grade is string
+        && request.resource.data.status in ['safe', 'unsafe']
+        && request.resource.data.roomNumber is string
+        && request.resource.data.teacherName is string
+        && request.resource.data.teacherName.size() > 0
+        && (!('note' in request.resource.data) || request.resource.data.note == null || request.resource.data.note is string)
+        && (!('location' in request.resource.data) || request.resource.data.location == null || (
+          request.resource.data.location.latitude is number
+          && request.resource.data.location.longitude is number
+        ));
+
+      allow delete: if false;
+    }
+
+    // Teacher room roll call — one doc per device per drill
+    match /teacherReports/{reportId} {
+      allow read: if false;
+
+      allow create, update: if request.auth != null
+        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.drillId is string
+        && request.resource.data.roomNumber is string
+        && request.resource.data.roomNumber.size() > 0
+        && request.resource.data.teacherName is string
+        && request.resource.data.teacherName.size() > 0
+        && request.resource.data.teacherName.size() < 120
+        && request.resource.data.presentIds is list
+        && request.resource.data.missingIds is list
+        && request.resource.data.unmatchedMissing is list
+        && request.resource.data.allAccounted is bool
+        && request.resource.data.inputMode in ['voice', 'checkbox']
+        && (!('transcript' in request.resource.data) || request.resource.data.transcript == null || request.resource.data.transcript is string);
+
+      allow delete: if false;
+    }
+  }
+}
