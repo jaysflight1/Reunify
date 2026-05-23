@@ -65,7 +65,7 @@ export const DEMO_ROLE_OPTIONS: Array<{
 }> = [
   { role: "admin", userId: DEMO_APP_USERS.admin, label: "Admin", href: "/admin" },
   { role: "teacher", userId: DEMO_APP_USERS.teacher, label: "Teacher", href: "/teacher" },
-  { role: "student", userId: DEMO_APP_USERS.student, label: "Student", href: "/check-in" },
+  { role: "student", userId: DEMO_APP_USERS.student, label: "Student", href: "/student" },
   { role: "parent", userId: DEMO_APP_USERS.parent, label: "Parent", href: "/parent" },
   { role: "responder", userId: DEMO_APP_USERS.responder, label: "Responder", href: "/responder" },
 ];
