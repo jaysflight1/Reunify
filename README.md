@@ -1,6 +1,6 @@
 # Reunify 🔗
 
-> Built at **Synth Hacks** · Om K. · Jay R. · Sohum N. · Erkhes E.
+> Built at **Synth Hacks** - Om K. · Jay R. · Sohum N. · Erkhes E.
 
 **Reunify** is an AI-powered emergency student-family reunification platform. During school crises or lockdowns, it lets administrators track student check-in status in real time, helps parents locate their children, and gives responders a live operational dashboard — all from a single web app.
 
