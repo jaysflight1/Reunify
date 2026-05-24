@@ -94,8 +94,6 @@ export const DEMO_ROLE_OPTIONS: Array<{
   { role: "student", userId: DEMO_APP_USERS.student, label: "Student", href: "/student" },
   { role: "parent", userId: DEMO_APP_USERS.parent, label: "Parent", href: "/parent" },
   { role: "responder", userId: DEMO_APP_USERS.responder, label: "Responder", href: "/responder" },
-  { role: "student", userId: DEMO_STUDENT_JAY_ROY_ID, label: "Jay Roy", href: "/student" },
-  { role: "parent", userId: DEMO_PARENT_ANN_ROY_ID, label: "Ann Roy", href: "/parent" },
 ];
 
 export function demoUserById(userId: string | null): AppUser | null {

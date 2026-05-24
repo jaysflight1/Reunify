@@ -35,14 +35,6 @@ const STATUS_BADGE: Record<ChildStatus, { label: string; className: string }> = 
     label: "Safe",
     className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
   },
-  unsafe: {
-    label: "Needs help",
-    className: "border-rose-500/40 bg-rose-500/10 text-rose-300",
-  },
-  unaccounted: {
-    label: "Unaccounted",
-    className: "border-amber-500/40 bg-amber-500/10 text-amber-300",
-  },
   unknown: {
     label: "No update yet",
     className: "border-slate-500/40 bg-slate-500/10 text-slate-300",
@@ -51,33 +43,34 @@ const STATUS_BADGE: Record<ChildStatus, { label: string; className: string }> = 
 
 const STATUS_MESSAGE: Record<ChildStatus, string> = {
   safe: "Your child has been marked safe in their classroom.",
-  unsafe:
-    "Your child reported they need help. Staff and responders have been notified.",
-  unaccounted:
-    "Your child has not checked in yet. Their teacher's roll call is in progress.",
   unknown:
-    "No check-in or roll call has reached the system for your child yet.",
+    "We don't have a confirmed status update for your child yet. Staff are still working through check-ins — we'll update you here as soon as we know more.",
 };
 
-function buildChildView(
-  student: RoomStudent,
-  events: CheckInEvent[],
-  unaccountedIds: ReadonlySet<string>,
-): ChildView {
-  const latestEvent = findLatestStudentEvent(events, student);
-  const status = resolveParentChildStatus(student, events, unaccountedIds);
-  const { roomLabel, roomBuilding, teacherName } = roomContextForStudent(student, latestEvent);
-  const teacherRollCallEvent = findTeacherRollCallForStudent(events, student);
+function buildChildView(student: RoomStudent, events: CheckInEvent[]): ChildView {
+  const status = resolveParentChildStatus(student, events);
+  // Only expose dynamic / event-derived details when we are showing "safe".
+  // If status is unknown we must not leak unsafe notes, distress timestamps,
+  // or "reported by" attributions to the parent.
+  const safeEvent =
+    status === "safe" ? findLatestStudentEvent(events, student) : null;
+  const safeRollCall =
+    status === "safe" ? findTeacherRollCallForStudent(events, student) : null;
+  const eventForContext = safeEvent && safeEvent.status === "safe" ? safeEvent : null;
+  const { roomLabel, roomBuilding, teacherName } = roomContextForStudent(
+    student,
+    eventForContext,
+  );
 
   return {
     student,
     status,
-    latestEvent,
+    latestEvent: safeEvent,
     roomLabel,
     roomBuilding,
     teacherName,
-    lastUpdate: latestEvent?.at ?? teacherRollCallEvent?.at ?? null,
-    note: latestEvent?.note ?? null,
+    lastUpdate: safeEvent?.at ?? safeRollCall?.at ?? null,
+    note: safeEvent?.status === "safe" ? safeEvent.note ?? null : null,
   };
 }
 
@@ -94,10 +87,8 @@ export function ParentPortal() {
 
   const children = useMemo<ChildView[]>(() => {
     if (!selectedParent) return [];
-    return selectedParent.children.map((child) =>
-      buildChildView(child, live.events, live.unaccountedIds),
-    );
-  }, [selectedParent, live.events, live.unaccountedIds]);
+    return selectedParent.children.map((child) => buildChildView(child, live.events));
+  }, [selectedParent, live.events]);
 
   const handleSelect = (parent: DemoParent) => {
     setSelectedParentId(parent.id);

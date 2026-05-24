@@ -1,7 +1,12 @@
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { ALL_ROSTER_STUDENTS, LAHS_ROOMS, getRoomByNumber, type RoomStudent } from "@/lib/lahs-rooms";
 
-export type ParentChildStatus = "safe" | "unsafe" | "unaccounted" | "unknown";
+/**
+ * What the parent portal is allowed to display. Even if internal data marks a
+ * child as unsafe or unaccounted, the parent only ever sees `unknown` until we
+ * have a positive safe confirmation — at which point we flip to `safe`.
+ */
+export type ParentChildStatus = "safe" | "unknown";
 
 function normalizeName(name: string): string {
   return name.trim().toLowerCase();
@@ -48,14 +53,13 @@ export function findLatestStudentEvent(
 export function resolveParentChildStatus(
   student: RoomStudent,
   events: readonly CheckInEvent[],
-  unaccountedIds: ReadonlySet<string>,
 ): ParentChildStatus {
+  // Parents only see `safe` when we have an affirmative confirmation:
+  // a student-source safe check-in, or a teacher roll call covering them.
+  // Anything else (including unsafe / unaccounted) is shown as `unknown`.
   const latestEvent = findLatestStudentEvent(events, student);
-
-  if (latestEvent?.status === "unsafe") return "unsafe";
   if (latestEvent?.status === "safe") return "safe";
-  if (unaccountedIds.has(student.id)) return "unaccounted";
-  if (isOnCampusRoster(student.id)) return "safe";
+  if (findTeacherRollCallForStudent(events, student)) return "safe";
   return "unknown";
 }
 

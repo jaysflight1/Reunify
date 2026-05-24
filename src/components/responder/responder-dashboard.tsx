@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
+import { CampusMap } from "@/components/admin/campus-map";
 
 const SHOOTER_PATTERN =
   /\b(shooter|shooters|gunman|gunmen|gunwoman|gun|guns|firearm|firearms|weapon|weapons|armed|attacker|attackers|intruder|intruders|active\s+shooter)\b/i;
@@ -127,6 +128,18 @@ export function ResponderDashboard() {
           ) : null}
         </ul>
       </Panel>
+
+      <section className="mt-4">
+        <p className="mb-2 px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[#64748b]">
+          Campus map
+        </p>
+        <CampusMap
+          unaccountedIds={live.unaccountedIds}
+          roomStatsMap={live.roomStatsMap}
+          teacherByRoom={live.teacherByRoom}
+          studentDots={live.studentDots}
+        />
+      </section>
     </div>
   );
 }

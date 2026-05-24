@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Evacuation Command · Admin",
-  description: "Live evacuation status simulation for school administrators",
+  title: "Reunify · Emergency Reunification Platform",
+  description:
+    "Account for every student in the first 60 seconds of an emergency. Coordinate staff, responders, and families from one live picture of the campus.",
 };
 
 export default function RootLayout({
