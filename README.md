@@ -1,23 +1,22 @@
-# Reunify 🔗
+# Reunify
 
-> Built at **Synth Hacks** by Om K.   Jay R.   Sohum N.   Erkhes E.
-
-**Reunify** is an AI-powered emergency student-family reunification platform. During school crises or lockdowns, it lets administrators track student check-in status in real time, helps parents locate their children, and gives responders a live operational dashboard — all from a single web app.
+**Reunify** is an AI-powered emergency student-family coordination platform. During school crises or lockdowns, it lets administrators track student check-in status in real time, helps parents locate their children, and gives responders a live operational dashboard.
 
 ***
 
-## ✨ Features
+## Features
 
-- **Multi-role dashboards** — Separate, purpose-built views for Students, Teachers, Parents, Responders, and Admins
-- **Real-time check-in** — Students check in via the `/check-in` flow; status updates propagate instantly via Firestore
-- **AI triage assistant** — Gemini 2.5 Flash Lite helps responders prioritize and answer parent queries intelligently
-- **SMS notifications** — Optional Twilio integration sends parents status updates without requiring a smartphone app
-- **Secure by default** — Granular Firestore security rules ensure each role only reads/writes data it owns
-- **Demo mode** — `ALLOW_DEMO_AUTH=true` lets you run the full app locally without a real Firebase project
+- **Multi-role dashboards**: Separate, purpose-built views for Students, Teachers, Parents, Responders, and Admins
+- **Real-time check-in**: Teachers and students send status updates via voice or text; status updates propagate instantly via Firestore
+- **AI triage assistant**: Gemini 2.5 Flash Lite parses freeflowing text and voice updates and updates students' status in the system
+- **Shooter & Injury Updates**: Consolidates reports involving shooter location and injuries into a single panel for first responders.
+- helps responders prioritize and answer parent queries intelligently
+- **Secure by default**: Granular Firestore security rules ensure each role only reads/writes data it owns
+- **Demo mode**: `ALLOW_DEMO_AUTH=true` lets you run the full app locally without a real Firebase project
 
 ***
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -27,12 +26,11 @@
 | Database | Firestore (Firebase) |
 | Auth | Firebase Auth + Firebase Admin SDK |
 | AI | Google Gemini (`@google/genai`) |
-| SMS | Twilio (optional) |
 | Validation | Zod |
 
 ***
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -109,12 +107,12 @@ src/
 
 ***
 
-## 🔒 Security
+## Security
 
 Firestore security rules (`firestore.rules`) enforce role-based access control — students, teachers, parents, and responders each have narrowly scoped read/write permissions. A permissive dev ruleset (`firestore.rules.dev`) is provided for local development only; **never deploy it to production**.
 
 ***
 
-## 📜 License
+## License
 
 This project was created for hackathon purposes. No license is currently specified — all rights reserved by the authors.
