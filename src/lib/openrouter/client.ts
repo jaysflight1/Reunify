@@ -1,4 +1,4 @@
-export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free";
 
 type OpenRouterMessage = {
   role: "system" | "user";

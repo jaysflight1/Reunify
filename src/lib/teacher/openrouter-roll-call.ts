@@ -7,7 +7,7 @@ import {
 import { getRoomByNumber } from "@/lib/general-rooms";
 import type { YapParseResult } from "@/lib/teacher/parse-yap";
 
-const FALLBACK_MODELS = ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"] as const;
+const FALLBACK_MODELS = ["openai/gpt-oss-120b:free", "openrouter/free"] as const;
 
 const OpenRouterRollCallSchema = z.object({
   spokenRoomNumber: z.string().nullable().optional(),

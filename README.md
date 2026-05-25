@@ -8,9 +8,9 @@
 
 - **Multi-role dashboards**: Separate, purpose-built views for Students, Teachers, Parents, Responders, and Admins
 - **Real-time check-in**: Teachers and students send status updates via voice or text; status updates propagate instantly via Firestore
-- **AI triage assistant**: OpenRouter-backed LLM parsing handles freeflowing text and voice updates and updates students' status in the system
+- **AI triage assistant**: OpenRouter-backed GPT-OSS-20B parsing handles freeflowing text and voice updates and updates students' status in the system
 - **Shooter & Injury Updates**: Consolidates reports involving shooter location and injuries into a single panel for first responders.
-- helps responders prioritize and answer parent queries intelligently
+- **Parent-safe SMS notifications**: Optional Twilio integration sends approved safe-status updates without exposing sensitive incident details
 - **Secure by default**: Granular Firestore security rules ensure each role only reads/writes data it owns
 - **Demo mode**: `ALLOW_DEMO_AUTH=true` lets you run the full app locally without a real Firebase project
 
@@ -25,7 +25,8 @@
 | Styling | Tailwind CSS v4 |
 | Database | Firestore (Firebase) |
 | Auth | Firebase Auth + Firebase Admin SDK |
-| AI | OpenRouter chat completions API |
+| AI | OpenRouter chat completions API (`openai/gpt-oss-20b:free` by default) |
+| SMS | Twilio REST API (optional, dry-run by default) |
 | Validation | Zod |
 
 ***
@@ -42,8 +43,8 @@
 ### Installation
 
 ```bash
-git clone https://github.com/jaysflight1/synth-hacks.git
-cd synth-hacks
+git clone https://github.com/jaysflight1/Reunify.git
+cd Reunify
 npm install
 ```
 
@@ -60,9 +61,10 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase client-side config (browser-safe) |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Firebase Admin SDK credentials (server-only) |
 | `OPENROUTER_API_KEY` | OpenRouter API key |
-| `OPENROUTER_MODEL` | Model ID (default: `openai/gpt-4o-mini`) |
+| `OPENROUTER_MODEL` | Model ID (default: `openai/gpt-oss-20b:free`) |
 | `OPENROUTER_SITE_URL` / `OPENROUTER_SITE_NAME` | Optional OpenRouter app attribution headers |
-| `TWILIO_*` | Twilio credentials for SMS (optional) |
+| `SMS_NOTIFICATIONS_ENABLED` | Set `true` to send SMS. Default `false` records dry-run audits only |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` | Twilio credentials for parent-safe SMS (optional) |
 | `ALLOW_DEMO_AUTH` | Set `true` to bypass real auth in development |
 | `NEXT_PUBLIC_APP_URL` | Base URL (default: `http://localhost:3000`) |
 
