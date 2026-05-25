@@ -4,7 +4,7 @@ export type RoomStudent = {
   grade: string;
 };
 
-export type LahsRoom = {
+export type GeneralRoom = {
   id: string;
   number: string;
   label: string;

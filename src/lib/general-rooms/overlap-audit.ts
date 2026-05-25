@@ -1,6 +1,6 @@
-import type { LahsRoom } from "./types";
+import type { GeneralRoom } from "./types";
 
-export function countRoomOverlaps(rooms: LahsRoom[]) {
+export function countRoomOverlaps(rooms: GeneralRoom[]) {
   let overlaps = 0;
   const samples: [string, string][] = [];
   for (let i = 0; i < rooms.length; i++) {

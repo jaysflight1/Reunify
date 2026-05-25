@@ -68,12 +68,12 @@ const EXAMPLE_STUDENT_NAMES = [
 ];
 
 const EXTRA_EXAMPLE_STUDENTS: ExampleStudent[] = [
-  { id: "LAHS-1061", fullName: "Jay Roy", grade: "10" },
+  { id: "GHS-1061", fullName: "Jay Roy", grade: "10" },
 ];
 
 export const EXAMPLE_STUDENTS: ExampleStudent[] = [
   ...EXAMPLE_STUDENT_NAMES.map((fullName, index) => ({
-    id: `LAHS-${String(index + 1001).padStart(4, "0")}`,
+    id: `GHS-${String(index + 1001).padStart(4, "0")}`,
     fullName,
     grade: String(9 + (index % 4)),
   })),

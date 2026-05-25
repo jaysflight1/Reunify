@@ -14,7 +14,7 @@ import {
   unaccountedStudents,
   type TeacherRoomSnapshot,
 } from "@/lib/evacuation-state";
-import { ALL_ROSTER_STUDENTS, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, type RoomStudent } from "@/lib/general-rooms";
 import {
   buildRoomEvacStatsMap,
   groupCheckInsByRoom,

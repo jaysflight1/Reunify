@@ -308,7 +308,7 @@ function buildSeedData(): SeedData {
   return {
     school: {
       id: DEMO_SCHOOL_ID,
-      name: "Los Altos High School",
+      name: "General High School",
       activeIncidentId: DEMO_INCIDENT_ID,
       updatedAt: NOW,
     },

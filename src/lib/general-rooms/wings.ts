@@ -1,5 +1,5 @@
 import { buildSingleRoom, buildWingGrid } from "./build-rooms";
-import type { LahsRoom, WingGridSpec } from "./types";
+import type { GeneralRoom, WingGridSpec } from "./types";
 
 const T = {} as Record<string, string>;
 
@@ -216,7 +216,7 @@ const wings: WingGridSpec[] = [
   },
 ];
 
-const specials: LahsRoom[] = [
+const specials: GeneralRoom[] = [
   buildSingleRoom("library", "Library", { x: 6, y: 68, w: 22, h: 12 }, 10),
   buildSingleRoom("theatre", "Eagle Theater", { x: 4, y: 52, w: 18, h: 12 }, 12),
   buildSingleRoom(
@@ -227,17 +227,17 @@ const specials: LahsRoom[] = [
   ),
 ];
 
-export const LAHS_ROOMS: LahsRoom[] = [
+export const GHS_ROOMS: GeneralRoom[] = [
   ...wings.flatMap(buildWingGrid),
   ...specials,
 ];
 
-export const ALL_ROSTER_STUDENTS = LAHS_ROOMS.flatMap((r) => r.roster);
+export const ALL_ROSTER_STUDENTS = GHS_ROOMS.flatMap((r) => r.roster);
 
-export function getRoomById(id: string): LahsRoom | undefined {
-  return LAHS_ROOMS.find((r) => r.id === id);
+export function getRoomById(id: string): GeneralRoom | undefined {
+  return GHS_ROOMS.find((r) => r.id === id);
 }
 
-export function getRoomByNumber(number: string): LahsRoom | undefined {
-  return LAHS_ROOMS.find((r) => r.number === number);
+export function getRoomByNumber(number: string): GeneralRoom | undefined {
+  return GHS_ROOMS.find((r) => r.number === number);
 }

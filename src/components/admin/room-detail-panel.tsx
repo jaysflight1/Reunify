@@ -2,11 +2,11 @@
 
 import { getRoomEvacStats, type RoomEvacStats } from "@/lib/room-accounting";
 import { getTeacherSnapshot, type TeacherRoomSnapshot } from "@/lib/evacuation-state";
-import type { LahsRoom } from "@/lib/lahs-rooms";
+import type { GeneralRoom } from "@/lib/general-rooms";
 import { formatTime } from "@/lib/demo-data";
 
 type RoomDetailPanelProps = {
-  room: LahsRoom;
+  room: GeneralRoom;
   roomStatsMap: ReadonlyMap<string, RoomEvacStats>;
   teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>;
   unaccountedIds: ReadonlySet<string>;

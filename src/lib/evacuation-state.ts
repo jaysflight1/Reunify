@@ -1,4 +1,4 @@
-import { ALL_ROSTER_STUDENTS, getMissingInRoom, LAHS_ROOMS, type LahsRoom, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, getMissingInRoom, GHS_ROOMS, type GeneralRoom, type RoomStudent } from "@/lib/general-rooms";
 import { NEED_HELP_ROOM } from "@/lib/firebase/config";
 import type { StudentReport, TeacherRoomReport } from "@/lib/firebase/types";
 import {
@@ -113,7 +113,7 @@ export function buildEvacuationState(
   const roomStatsMap = new Map<string, RoomEvacStats>();
   const teacherByRoom = new Map<string, TeacherRoomSnapshot>();
 
-  for (const room of LAHS_ROOMS) {
+  for (const room of GHS_ROOMS) {
     const teacherReport = teacherByRoomLatest.get(room.number);
     let rosterMissing: RoomStudent[];
 
@@ -149,7 +149,7 @@ export function unaccountedStudents(ids: ReadonlySet<string>): RoomStudent[] {
 }
 
 export function getTeacherSnapshot(
-  room: LahsRoom,
+  room: GeneralRoom,
   teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>,
 ): TeacherRoomSnapshot | null {
   return teacherByRoom.get(room.number) ?? null;

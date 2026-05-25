@@ -70,8 +70,8 @@ export function SchematicCampus() {
 
       <WingShell x={40} y={4} w={24} h={14} label="Gym / Pool" accent />
 
-      <Road y={2} label="Jardin Ave · North" />
-      <Road y={88} label="Almond Ave · South" />
+      <Road y={2} label="North Access Road" />
+      <Road y={88} label="South Access Road" />
       <text
         x={134}
         y={46}
@@ -79,7 +79,7 @@ export function SchematicCampus() {
         className="fill-[#3d4f63] text-[2.2px]"
         transform="rotate(90 134 46)"
       >
-        Alicia Way
+        East Access
       </text>
 
       <rect x={44} y={82} width={36} height={6} rx={0.4} fill="#1a222c" stroke="#2a3644" strokeWidth={0.25} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { LAHS_ROOMS, type LahsRoom } from "@/lib/lahs-rooms";
+import { GHS_ROOMS, type GeneralRoom } from "@/lib/general-rooms";
 import {
   getRoomEvacStats,
   roomTintFromEvacStats,
@@ -11,7 +11,7 @@ type RoomLayerProps = {
   roomStatsMap: ReadonlyMap<string, RoomEvacStats>;
   unaccountedIds: ReadonlySet<string>;
   selectedRoomId: string | null;
-  onSelectRoom: (room: LahsRoom) => void;
+  onSelectRoom: (room: GeneralRoom) => void;
   showLabels?: boolean;
 };
 
@@ -24,7 +24,7 @@ export function RoomLayer({
 }: RoomLayerProps) {
   return (
     <g className="room-layer">
-      {LAHS_ROOMS.map((room) => {
+      {GHS_ROOMS.map((room) => {
         const stats = getRoomEvacStats(room, roomStatsMap, unaccountedIds);
         const missing = stats.rosterMissing;
         const fill = roomTintFromEvacStats(stats, room.roster.length);

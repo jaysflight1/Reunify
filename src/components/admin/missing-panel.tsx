@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { RoomStudent } from "@/lib/lahs-rooms";
-import { ALL_ROSTER_STUDENTS } from "@/lib/lahs-rooms";
+import type { RoomStudent } from "@/lib/general-rooms";
+import { ALL_ROSTER_STUDENTS } from "@/lib/general-rooms";
 
 type MissingPanelProps = {
   students: RoomStudent[];

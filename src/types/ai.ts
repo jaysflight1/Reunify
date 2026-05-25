@@ -62,4 +62,4 @@ export type ParsedEmergencyReportResult = {
   needsAdminReview: boolean;
 };
 
-export type GeminiSafetyTone = "calm" | "urgent" | "brief";
+export type SafetyTone = "calm" | "urgent" | "brief";

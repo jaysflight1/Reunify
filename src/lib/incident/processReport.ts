@@ -1,6 +1,6 @@
 import type { DocumentData, Firestore } from "firebase-admin/firestore";
 import { requireAdminDb } from "@/lib/firebase/admin";
-import { parseEmergencyReport } from "@/lib/gemini/parseEmergencyReport";
+import { parseEmergencyReport } from "@/lib/openrouter/parseEmergencyReport";
 import type {
   ClassGroup,
   Conflict,

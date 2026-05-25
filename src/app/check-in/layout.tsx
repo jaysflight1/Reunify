@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Student Check-In · LAHS",
+  title: "Student Check-In · General High School",
   description: "Report your location and status to school staff during a drill.",
   robots: { index: false, follow: false },
 };

@@ -1,4 +1,4 @@
-import { ALL_ROSTER_STUDENTS, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, type RoomStudent } from "@/lib/general-rooms";
 
 export type DemoParent = {
   id: string;
@@ -51,13 +51,13 @@ const MANUAL_PARENTS: DemoParent[] = [
     id: "parent-of-alyssa-wang",
     fullName: "Janet Wang",
     children: [
-      { id: "LAHS-1001", name: "Alyssa Wang", grade: "9" },
+      { id: "GHS-1001", name: "Alyssa Wang", grade: "9" },
     ],
   },
   {
     id: "parent-of-jay-roy",
     fullName: "Ann Roy",
-    children: [{ id: "LAHS-1061", name: "Jay Roy", grade: "10" }],
+    children: [{ id: "GHS-1061", name: "Jay Roy", grade: "10" }],
   },
 ];
 

@@ -1,14 +1,14 @@
-export type { LahsRoom, RoomStudent } from "./types";
-import type { LahsRoom, RoomStudent } from "./types";
+export type { GeneralRoom, RoomStudent } from "./types";
+import type { GeneralRoom, RoomStudent } from "./types";
 export {
-  LAHS_ROOMS,
+  GHS_ROOMS,
   ALL_ROSTER_STUDENTS,
   getRoomById,
   getRoomByNumber,
 } from "./wings";
 
 export function getMissingInRoom(
-  room: LahsRoom,
+  room: GeneralRoom,
   unaccountedIds: ReadonlySet<string>,
 ): RoomStudent[] {
   return room.roster.filter((s) => unaccountedIds.has(s.id));

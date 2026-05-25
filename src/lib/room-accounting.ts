@@ -1,5 +1,5 @@
-import { ALL_ROSTER_STUDENTS, getMissingInRoom, LAHS_ROOMS, roomStatusTint } from "@/lib/lahs-rooms";
-import type { LahsRoom, RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, getMissingInRoom, GHS_ROOMS, roomStatusTint } from "@/lib/general-rooms";
+import type { GeneralRoom, RoomStudent } from "@/lib/general-rooms";
 import type { Status } from "@/lib/demo-data";
 
 /** One student self-report or demo check-in tied to a room. */
@@ -72,7 +72,7 @@ export function buildRoomEvacStatsMap(
   checkInsByRoom: ReadonlyMap<string, RoomCheckIn[]>,
 ): Map<string, RoomEvacStats> {
   const map = new Map<string, RoomEvacStats>();
-  for (const room of LAHS_ROOMS) {
+  for (const room of GHS_ROOMS) {
     map.set(room.number, {
       rosterMissing: getMissingInRoom(room, unaccountedIds),
       checkIns: checkInsByRoom.get(room.number) ?? [],
@@ -102,7 +102,7 @@ export function roomTintFromEvacStats(stats: RoomEvacStats, rosterSize: number):
 }
 
 export function getRoomEvacStats(
-  room: LahsRoom,
+  room: GeneralRoom,
   roomStatsMap: ReadonlyMap<string, RoomEvacStats>,
   unaccountedIds: ReadonlySet<string>,
 ): RoomEvacStats {

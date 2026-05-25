@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CAMPUS_MAP } from "@/lib/demo-data";
-import type { LahsRoom } from "@/lib/lahs-rooms";
+import type { GeneralRoom } from "@/lib/general-rooms";
 import type { RoomEvacStats } from "@/lib/room-accounting";
 import type { TeacherRoomSnapshot } from "@/lib/evacuation-state";
 import type { StudentDot } from "@/lib/student-dots";
@@ -26,7 +26,7 @@ export function CampusMap({
   teacherByRoom,
   studentDots,
 }: CampusMapProps) {
-  const [selectedRoom, setSelectedRoom] = useState<LahsRoom | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<GeneralRoom | null>(null);
   const [showRoomNumbers, setShowRoomNumbers] = useState(true);
   const [showDots, setShowDots] = useState(true);
 

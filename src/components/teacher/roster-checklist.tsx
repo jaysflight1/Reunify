@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomStudent } from "@/lib/lahs-rooms";
+import type { RoomStudent } from "@/lib/general-rooms";
 
 type RosterChecklistProps = {
   roster: RoomStudent[];
