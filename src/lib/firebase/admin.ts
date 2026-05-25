@@ -164,7 +164,7 @@ export async function seedFirestoreCatalog(
     id: drillId,
     name: "Active evacuation drill",
     active: true,
-    school: "Los Altos High School",
+    school: "General High School",
     updatedAt: new Date(),
   });
 

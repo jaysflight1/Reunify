@@ -32,7 +32,7 @@ type FormState = {
 };
 
 type StudentTranscriptParseResult = {
-  source: "gemini" | "regex";
+  source: "openrouter" | "regex";
   warning?: string;
   result: {
     studentId: string | null;

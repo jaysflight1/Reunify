@@ -1,11 +1,15 @@
 import { z } from "zod";
-import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini/client";
-import { getRoomByNumber } from "@/lib/lahs-rooms";
+import {
+  generateOpenRouterJson,
+  isOpenRouterConfigured,
+  openRouterModelName,
+} from "@/lib/openrouter/client";
+import { getRoomByNumber } from "@/lib/general-rooms";
 import type { YapParseResult } from "@/lib/teacher/parse-yap";
 
-const FALLBACK_MODELS = ["gemini-2.5-flash-lite", "gemini-2.0-flash-001"] as const;
+const FALLBACK_MODELS = ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"] as const;
 
-const GeminiRollCallSchema = z.object({
+const OpenRouterRollCallSchema = z.object({
   spokenRoomNumber: z.string().nullable().optional(),
   allAccounted: z.boolean(),
   missingStudentIds: z.array(z.string()),
@@ -15,15 +19,7 @@ const GeminiRollCallSchema = z.object({
   summary: z.string(),
 });
 
-export type GeminiRollCallRaw = z.infer<typeof GeminiRollCallSchema>;
-
-export function isGeminiConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY?.trim());
-}
-
-export function geminiModelName(): string {
-  return process.env.GEMINI_MODEL?.trim() || GEMINI_MODEL;
-}
+export type OpenRouterRollCallRaw = z.infer<typeof OpenRouterRollCallSchema>;
 
 function extractJson(text: string): string {
   const trimmed = text.trim();
@@ -39,30 +35,18 @@ function extractJson(text: string): string {
   return trimmed;
 }
 
-async function generateRollCallJson(prompt: string, model: string): Promise<GeminiRollCallRaw> {
-  const ai = getGeminiClient();
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      temperature: 0.1,
-      responseMimeType: "application/json",
-    },
-  });
-
-  const text = response.text ?? "";
-  if (!text) throw new Error("Empty response from Gemini");
-
-  return GeminiRollCallSchema.parse(JSON.parse(extractJson(text)));
+async function generateRollCallJson(prompt: string, model: string): Promise<OpenRouterRollCallRaw> {
+  const text = await generateOpenRouterJson({ prompt, model, temperature: 0.1 });
+  return OpenRouterRollCallSchema.parse(JSON.parse(extractJson(text)));
 }
 
-export async function parseRollCallWithGemini(input: {
+export async function parseRollCallWithOpenRouter(input: {
   transcript: string;
   selectedRoomNumber: string;
   roster: { id: string; name: string }[];
-}): Promise<GeminiRollCallRaw> {
-  if (!isGeminiConfigured()) {
-    throw new Error("GEMINI_API_KEY not configured");
+}): Promise<OpenRouterRollCallRaw> {
+  if (!isOpenRouterConfigured()) {
+    throw new Error("OPENROUTER_API_KEY not configured");
   }
 
   const rosterJson = JSON.stringify(input.roster);
@@ -99,33 +83,34 @@ Return JSON matching:
 }`;
 
   const modelsToTry = [
-    geminiModelName(),
-    ...FALLBACK_MODELS.filter((m) => m !== geminiModelName()),
+    openRouterModelName(),
+    ...FALLBACK_MODELS.filter((m) => m !== openRouterModelName()),
   ];
 
   let lastError: unknown;
   for (const modelName of modelsToTry) {
     try {
       const parsed = await generateRollCallJson(prompt, modelName);
-      return normalizeGeminiRaw(parsed, input.roster);
+      return normalizeOpenRouterRaw(parsed, input.roster);
     } catch (e) {
       lastError = e;
       const message = e instanceof Error ? e.message : String(e);
       const retryable =
         message.includes("404") ||
         message.includes("not found") ||
-        message.includes("no longer available");
+        message.includes("no allowed providers") ||
+        message.includes("No allowed providers");
       if (!retryable) throw e;
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Gemini request failed");
+  throw lastError instanceof Error ? lastError : new Error("OpenRouter request failed");
 }
 
-function normalizeGeminiRaw(
-  raw: GeminiRollCallRaw,
+function normalizeOpenRouterRaw(
+  raw: OpenRouterRollCallRaw,
   roster: { id: string; name: string }[],
-): GeminiRollCallRaw {
+): OpenRouterRollCallRaw {
   const rosterIds = new Set(roster.map((s) => s.id));
   let spoken: string | null = raw.spokenRoomNumber?.trim() || null;
   if (spoken && !getRoomByNumber(spoken)) spoken = null;
@@ -147,8 +132,8 @@ function normalizeGeminiRaw(
   };
 }
 
-export function yapFromGemini(
-  raw: GeminiRollCallRaw,
+export function yapFromOpenRouter(
+  raw: OpenRouterRollCallRaw,
   selectedRoomNumber: string,
 ): YapParseResult {
   const spokenRoomNumber = raw.spokenRoomNumber ?? null;
@@ -182,10 +167,6 @@ export function yapFromGemini(
     ? rosterIds
     : rosterIds.filter((id) => !missingIds.includes(id));
 
-  const roomLabel = spokenRoomNumber
-    ? `Room ${spokenRoomNumber} (from voice)`
-    : `Room ${selectedRoomNumber} (dropdown)`;
-
   return {
     selectedRoomNumber,
     spokenTeacherName: null,
@@ -196,9 +177,9 @@ export function yapFromGemini(
     presentIds,
     missingIds,
     unmatchedMissing: raw.unmatchedNames,
-    allAccounted: raw.allAccounted && missingIds.length === 0 && raw.unmatchedNames.length === 0,
+    allAccounted: raw.allAccounted,
     notes: raw.notes ?? null,
     confidence: raw.confidence,
-    summary: raw.summary || `${roomLabel} · ${missingIds.length} missing`,
+    summary: raw.summary,
   };
 }

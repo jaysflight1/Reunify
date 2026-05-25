@@ -55,7 +55,7 @@ export function StatsBar({
             Evacuation Command
           </h1>
           <p className="text-[11px] text-[#64748b]">
-            Staff only · Los Altos HS ·{" "}
+            Staff only · General HS ·{" "}
             {dataMode === "local" ? (
               <span className={firebaseConnected ? "text-emerald-500" : "text-amber-500"}>
                 {firebaseConnected ? "Live check-ins" : "Waiting for check-ins…"}

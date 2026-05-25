@@ -5,7 +5,7 @@ import {
   seedFirestoreCatalog,
 } from "@/lib/firebase/admin";
 import { ACTIVE_DRILL_ID } from "@/lib/firebase/config";
-import { ROOM_OPTIONS } from "@/lib/lahs-rooms/room-options";
+import { ROOM_OPTIONS } from "@/lib/general-rooms/room-options";
 
 export async function POST() {
   if (!isFirebaseAdminConfigured()) {

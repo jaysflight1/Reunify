@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
+    "test:notifications": "tsx --test src/lib/notifications/*.test.ts",
+    "test:incident": "tsx --test src/lib/incident/*.test.ts",
     "firebase:deploy": "firebase deploy --only firestore:rules,firestore:indexes"
   },
   "dependencies": {
-    "@google/genai": "^2.6.0",
     "@opentelemetry/api": "^1.9.1",
     "clsx": "^2.1.1",
     "firebase": "^12.13.0",

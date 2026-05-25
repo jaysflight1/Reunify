@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { RoomStudent } from "@/lib/lahs-rooms";
+import type { RoomStudent } from "@/lib/general-rooms";
 import type { YapParseResult } from "@/lib/teacher/parse-yap";
 
-type ParseSource = "gemini" | "regex" | null;
+type ParseSource = "openrouter" | "regex" | null;
 
-type UseGeminiVoiceParseArgs = {
+type UseOpenRouterVoiceParseArgs = {
   enabled: boolean;
   transcript: string;
   listening: boolean;
@@ -14,13 +14,13 @@ type UseGeminiVoiceParseArgs = {
   roster: RoomStudent[];
 };
 
-export function useGeminiVoiceParse({
+export function useOpenRouterVoiceParse({
   enabled,
   transcript,
   listening,
   selectedRoomNumber,
   roster,
-}: UseGeminiVoiceParseArgs) {
+}: UseOpenRouterVoiceParseArgs) {
   const [yap, setYap] = useState<YapParseResult | null>(null);
   const [source, setSource] = useState<ParseSource>(null);
   const [parsing, setParsing] = useState(false);
@@ -71,7 +71,7 @@ export function useGeminiVoiceParse({
           if (!res.ok) throw new Error("Parse request failed");
           const data = (await res.json()) as {
             result: YapParseResult;
-            source: "gemini" | "regex";
+            source: "openrouter" | "regex";
             warning?: string;
           };
           if (controller.signal.aborted) return;

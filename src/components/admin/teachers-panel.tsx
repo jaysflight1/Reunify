@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { LAHS_ROOMS, type LahsRoom } from "@/lib/lahs-rooms";
+import { GHS_ROOMS, type GeneralRoom } from "@/lib/general-rooms";
 import {
   getRoomEvacStats,
   roomTintFromEvacStats,
@@ -14,7 +14,7 @@ type TeachersPanelProps = {
 };
 
 type RoomRow = {
-  room: LahsRoom;
+  room: GeneralRoom;
   missing: number;
   checkedIn: number;
   stats: RoomEvacStats;
@@ -22,7 +22,7 @@ type RoomRow = {
 
 export function TeachersPanel({ roomStatsMap, unaccountedIds }: TeachersPanelProps) {
   const rows = useMemo(() => {
-    const list: RoomRow[] = LAHS_ROOMS.map((room) => {
+    const list: RoomRow[] = GHS_ROOMS.map((room) => {
       const stats = getRoomEvacStats(room, roomStatsMap, unaccountedIds);
       return {
         room,

@@ -1,9 +1,9 @@
 import {
-  LAHS_ROOMS,
+  GHS_ROOMS,
   getRoomByNumber,
-  type LahsRoom,
+  type GeneralRoom,
   type RoomStudent,
-} from "@/lib/lahs-rooms";
+} from "@/lib/general-rooms";
 import { matchNamesToRoster, normalizeText, splitNameList } from "./match-roster";
 
 export type YapParseResult = {
@@ -17,7 +17,7 @@ export type YapParseResult = {
   spokenRoomNumber: string | null;
   /** spokenRoomNumber ?? selectedRoomNumber */
   effectiveRoomNumber: string;
-  room: LahsRoom | null;
+  room: GeneralRoom | null;
   presentIds: string[];
   missingIds: string[];
   unmatchedMissing: string[];
@@ -76,7 +76,7 @@ function teacherCandidateFragments(text: string): string[] {
 export function extractSpokenTeacher(
   text: string,
 ): { teacherName: string; roomNumber: string } | null {
-  const teachers = LAHS_ROOMS.filter((room) => room.roster.length > 0).map((room) => ({
+  const teachers = GHS_ROOMS.filter((room) => room.roster.length > 0).map((room) => ({
     teacherName: room.teacher,
     roomNumber: room.number,
     normalized: normalizeText(room.teacher),
@@ -265,7 +265,7 @@ function emptyResult(
   selectedRoomNumber: string,
   spokenRoomNumber: string | null,
   effectiveRoomNumber: string,
-  room: LahsRoom | null,
+  room: GeneralRoom | null,
   summary: string,
 ): YapParseResult {
   return {

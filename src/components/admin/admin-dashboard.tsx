@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { ALL_ROSTER_STUDENTS, LAHS_ROOMS } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, GHS_ROOMS } from "@/lib/general-rooms";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
@@ -217,8 +217,8 @@ export function AdminDashboard() {
           </div>
           <p className="mt-2 shrink-0 px-1 text-[10px] leading-relaxed text-[#475569]">
             {live.mode === "firebase" || live.mode === "local"
-              ? `${live.events.length} checked in · ${LAHS_ROOMS.length} rooms · click a tile for roster`
-              : `Demo · ${LAHS_ROOMS.length} rooms · ${ALL_ROSTER_STUDENTS.length} students · click room for detail`}
+              ? `${live.events.length} checked in · ${GHS_ROOMS.length} rooms · click a tile for roster`
+              : `Demo · ${GHS_ROOMS.length} rooms · ${ALL_ROSTER_STUDENTS.length} students · click room for detail`}
           </p>
           <div className="mt-3 grid gap-3 xl:grid-cols-3">
             <div className="xl:col-span-2">

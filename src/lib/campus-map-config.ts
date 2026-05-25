@@ -3,7 +3,7 @@ export type MapPoint = { x: number; y: number };
 
 export const CAMPUS_MAP = {
   viewBox: { w: 140, h: 92 },
-  schoolName: "Los Altos High School",
+  schoolName: "General High School",
 } as const;
 
 export const RALLY_POINT = {

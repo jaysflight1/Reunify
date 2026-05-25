@@ -16,4 +16,4 @@ npm run lint
 
 ## Deployment notes
 
-Before deploying to Vercel, configure the environment variables from `.env.example` for Development, Preview, and Production. Gemini and Firebase Admin values must remain server-only.
+Before deploying to Vercel, configure the environment variables from `.env.example` for Development, Preview, and Production. OpenRouter and Firebase Admin values must remain server-only.

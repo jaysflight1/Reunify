@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AuthContext } from "@/types/user";
 import type { ClassGroup, Location, Student } from "@/types/incident";
 import type { ParsedEmergencyReportResult } from "@/types/ai";
-import { GEMINI_MODEL, getGeminiClient } from "./client";
+import { generateOpenRouterJson } from "@/lib/openrouter/client";
 
 const SYSTEM_PROMPT = `
 You are an emergency school accountability report parser.
@@ -253,18 +253,11 @@ function fallbackParsedReport(rawText: string, reason: string): ParsedEmergencyR
 }
 
 async function generateJson(contents: string): Promise<string> {
-  const ai = getGeminiClient();
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents,
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      temperature: 0.1,
-    },
+  return generateOpenRouterJson({
+    prompt: contents,
+    system: SYSTEM_PROMPT,
+    temperature: 0.1,
   });
-
-  return response.text ?? "";
 }
 
 function parseRawJson(text: string): RawParsedEmergencyReport {
@@ -296,7 +289,7 @@ ${firstResponse}
       const repairedResponse = await generateJson(repairPrompt);
       return toParsedResult(parseRawJson(repairedResponse));
     } catch {
-      const reason = firstError instanceof Error ? firstError.message : "Gemini returned invalid JSON.";
+      const reason = firstError instanceof Error ? firstError.message : "OpenRouter returned invalid JSON.";
       return fallbackParsedReport(context.rawText, reason);
     }
   }

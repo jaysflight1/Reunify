@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatTime, type Status } from "@/lib/demo-data";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { ALL_ROSTER_STUDENTS, getRoomByNumber, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, getRoomByNumber, type RoomStudent } from "@/lib/general-rooms";
 import { buildInitialUnaccounted } from "@/lib/room-accounting";
 import { newWalkerTarget, rosterPosition, type Walker } from "@/lib/student-dots";
 

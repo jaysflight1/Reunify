@@ -1,5 +1,5 @@
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
-import { ALL_ROSTER_STUDENTS, LAHS_ROOMS, getRoomByNumber, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, GHS_ROOMS, getRoomByNumber, type RoomStudent } from "@/lib/general-rooms";
 
 /**
  * What the parent portal is allowed to display. Even if internal data marks a
@@ -23,7 +23,7 @@ export function isOnCampusRoster(studentId: string): boolean {
 }
 
 export function findRoomForStudent(studentId: string) {
-  return LAHS_ROOMS.find((room) => room.roster.some((s) => s.id === studentId));
+  return GHS_ROOMS.find((room) => room.roster.some((s) => s.id === studentId));
 }
 
 function eventMatchesStudent(event: CheckInEvent, student: RoomStudent): boolean {

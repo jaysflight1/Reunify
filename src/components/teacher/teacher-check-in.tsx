@@ -4,16 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { submitTeacherRoomReportClient } from "@/lib/check-in/submit-reports";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { LAHS_ROOMS, getRoomByNumber, type LahsRoom } from "@/lib/lahs-rooms";
+import { GHS_ROOMS, getRoomByNumber, type GeneralRoom } from "@/lib/general-rooms";
 import { parseTeacherYap, rosterFromSelection } from "@/lib/teacher/parse-yap";
-import { useGeminiVoiceParse } from "@/hooks/use-gemini-voice-parse";
+import { useOpenRouterVoiceParse } from "@/hooks/use-openrouter-voice-parse";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { VoiceCapture } from "./voice-capture";
 import { RosterChecklist } from "./roster-checklist";
 
 type InputMode = "voice" | "checkbox";
 
-const ROOM_OPTIONS = [...LAHS_ROOMS]
+const ROOM_OPTIONS = [...GHS_ROOMS]
   .filter((r) => r.roster.length > 0)
   .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
 
@@ -46,7 +46,7 @@ export function TeacherCheckIn() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const room: LahsRoom | undefined = getRoomByNumber(roomNumber);
+  const room: GeneralRoom | undefined = getRoomByNumber(roomNumber);
   const roster = useMemo(() => room?.roster ?? [], [room]);
   const teacherOptions = useMemo<TeacherOption[]>(
     () =>
@@ -85,7 +85,7 @@ export function TeacherCheckIn() {
     [speech.liveText, roomNumber],
   );
 
-  const gemini = useGeminiVoiceParse({
+  const openrouter = useOpenRouterVoiceParse({
     enabled: mode === "voice",
     transcript: speech.liveText,
     listening: speech.listening,
@@ -93,12 +93,12 @@ export function TeacherCheckIn() {
     roster,
   });
 
-  const yap = gemini.yap ?? regexYap;
-  const parseSource = gemini.yap ? gemini.source : "regex";
+  const yap = openrouter.yap ?? regexYap;
+  const parseSource = openrouter.yap ? openrouter.source : "regex";
 
   useEffect(() => {
     if (mode !== "voice" || speech.listening || !speech.liveText.trim()) return;
-    if (gemini.parsing) return;
+    if (openrouter.parsing) return;
     if (
       yap.spokenTeacherName &&
       !teacherManuallyEditedRef.current &&
@@ -139,7 +139,7 @@ export function TeacherCheckIn() {
     speech.listening,
     speech.liveText,
     yap,
-    gemini.parsing,
+    openrouter.parsing,
     teacherName,
     teacherQuery,
     roomNumber,
@@ -167,7 +167,7 @@ export function TeacherCheckIn() {
     }
   };
 
-  const selectRoom = (option: LahsRoom) => {
+  const selectRoom = (option: GeneralRoom) => {
     const teacherAlreadySelected = Boolean(teacherName || teacherQuery.trim());
     setRoomQuery(option.label);
     setRoomNumber(option.number);
@@ -486,9 +486,9 @@ export function TeacherCheckIn() {
             selectedRoom={roomNumber}
             spokenRoom={yap.spokenRoomNumber}
             submitRoom={yap.effectiveRoomNumber}
-            parsing={gemini.parsing}
+            parsing={openrouter.parsing}
             parseSource={parseSource}
-            warning={gemini.warning}
+            warning={openrouter.warning}
           />
         </>
       ) : (
@@ -568,7 +568,7 @@ function ParsePreview({
   spokenRoom: string | null;
   submitRoom: string;
   parsing: boolean;
-  parseSource: "gemini" | "regex" | null;
+  parseSource: "openrouter" | "regex" | null;
   warning: string | null;
 }) {
   return (
@@ -579,8 +579,8 @@ function ParsePreview({
         </p>
         {parsing ? (
           <span className="text-[10px] text-sky-400/90">Understanding…</span>
-        ) : parseSource === "gemini" ? (
-          <span className="text-[10px] text-violet-400/90">Gemini</span>
+        ) : parseSource === "openrouter" ? (
+          <span className="text-[10px] text-violet-400/90">OpenRouter</span>
         ) : null}
       </div>
       <p className="mt-1 text-[11px] text-[#94a3b8]">

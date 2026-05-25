@@ -1,8 +1,8 @@
 import { teacherForRoom } from "./teachers";
 import { rosterForRoom } from "./roster";
-import type { LahsRoom, WingGridSpec } from "./types";
+import type { GeneralRoom, WingGridSpec } from "./types";
 
-export function buildWingGrid(spec: WingGridSpec): LahsRoom[] {
+export function buildWingGrid(spec: WingGridSpec): GeneralRoom[] {
   const { building, numbers, origin, cols, cellW, cellH, gapX = 0.15, gapY = 0.15 } =
     spec;
 
@@ -34,7 +34,7 @@ export function buildSingleRoom(
   building: string,
   bounds: { x: number; y: number; w: number; h: number },
   rosterSize = 8,
-): LahsRoom {
+): GeneralRoom {
   const specialLabels: Record<string, string> = {
     library: "Library",
     "student-services": "Student Services Building",

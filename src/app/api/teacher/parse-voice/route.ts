@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getRoomByNumber } from "@/lib/lahs-rooms";
+import { getRoomByNumber } from "@/lib/general-rooms";
 import {
-  isGeminiConfigured,
-  parseRollCallWithGemini,
-  yapFromGemini,
-} from "@/lib/teacher/gemini-roll-call";
+  parseRollCallWithOpenRouter,
+  yapFromOpenRouter,
+} from "@/lib/teacher/openrouter-roll-call";
+import { isOpenRouterConfigured } from "@/lib/openrouter/client";
 import { parseTeacherYap } from "@/lib/teacher/parse-yap";
 
 export async function POST(request: Request) {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const room = parserRoomNumber ? getRoomByNumber(parserRoomNumber) : null;
   const roster = room?.roster.map((s) => ({ id: s.id, name: s.name })) ?? [];
 
-  if (!isGeminiConfigured() || !parserRoomNumber) {
+  if (!isOpenRouterConfigured() || !parserRoomNumber) {
     return NextResponse.json({
       source: "regex" as const,
       result: preliminary,
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    let raw = await parseRollCallWithGemini({
+    let raw = await parseRollCallWithOpenRouter({
       transcript,
       selectedRoomNumber: parserRoomNumber,
       roster,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (effectiveRoom !== parserRoomNumber) {
       const spokenMeta = getRoomByNumber(effectiveRoom);
       if (spokenMeta && spokenMeta.roster.length > 0) {
-        raw = await parseRollCallWithGemini({
+        raw = await parseRollCallWithOpenRouter({
           transcript,
           selectedRoomNumber: effectiveRoom,
           roster: spokenMeta.roster.map((s) => ({ id: s.id, name: s.name })),
@@ -59,9 +59,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      source: "gemini" as const,
+      source: "openrouter" as const,
       result: {
-        ...yapFromGemini(raw, parserRoomNumber),
+        ...yapFromOpenRouter(raw, parserRoomNumber),
         selectedRoomNumber,
         spokenTeacherName: preliminary.spokenTeacherName,
         teacherMatchedRoomNumber: preliminary.teacherMatchedRoomNumber,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Gemini parse failed";
+    const message = e instanceof Error ? e.message : "OpenRouter parse failed";
     return NextResponse.json({
       source: "regex" as const,
       result: preliminary,

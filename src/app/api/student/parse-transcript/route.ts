@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { EXAMPLE_STUDENTS } from "@/lib/demo/example-students";
-import { GEMINI_MODEL, getGeminiClient } from "@/lib/gemini/client";
-import { ROOM_OPTIONS } from "@/lib/lahs-rooms/room-options";
-import { isGeminiConfigured } from "@/lib/teacher/gemini-roll-call";
+import { ROOM_OPTIONS } from "@/lib/general-rooms/room-options";
+import { generateOpenRouterJson, isOpenRouterConfigured } from "@/lib/openrouter/client";
 
 const ParsedStudentTranscriptSchema = z.object({
   studentId: z.string().nullable(),
@@ -127,8 +126,7 @@ function fallbackParse(transcript: string): ParsedStudentTranscript {
   };
 }
 
-async function parseWithGemini(transcript: string): Promise<ParsedStudentTranscript> {
-  const ai = getGeminiClient();
+async function parseWithOpenRouter(transcript: string): Promise<ParsedStudentTranscript> {
   const prompt = `Parse a student emergency check-in transcript into form fields.
 
 Known students:
@@ -164,17 +162,7 @@ Rules:
   "confidence": number
 }`;
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-    config: {
-      temperature: 0.1,
-      responseMimeType: "application/json",
-    },
-  });
-
-  const text = response.text ?? "";
-  if (!text) throw new Error("Empty response from Gemini");
+  const text = await generateOpenRouterJson({ prompt, temperature: 0.1 });
   return normalizeParsed(ParsedStudentTranscriptSchema.parse(JSON.parse(extractJson(text))));
 }
 
@@ -195,14 +183,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "transcript is required" }, { status: 400 });
   }
 
-  if (!isGeminiConfigured()) {
+  if (!isOpenRouterConfigured()) {
     return NextResponse.json({ source: "regex" as const, result: fallbackParse(transcript) });
   }
 
   try {
-    return NextResponse.json({ source: "gemini" as const, result: await parseWithGemini(transcript) });
+    return NextResponse.json({ source: "openrouter" as const, result: await parseWithOpenRouter(transcript) });
   } catch (error) {
-    const warning = error instanceof Error ? error.message : "Gemini parse failed";
+    const warning = error instanceof Error ? error.message : "OpenRouter parse failed";
     return NextResponse.json({
       source: "regex" as const,
       result: fallbackParse(transcript),

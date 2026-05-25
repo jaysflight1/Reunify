@@ -8,7 +8,7 @@
 
 - **Multi-role dashboards**: Separate, purpose-built views for Students, Teachers, Parents, Responders, and Admins
 - **Real-time check-in**: Teachers and students send status updates via voice or text; status updates propagate instantly via Firestore
-- **AI triage assistant**: Gemini 2.5 Flash Lite parses freeflowing text and voice updates and updates students' status in the system
+- **AI triage assistant**: OpenRouter-backed LLM parsing handles freeflowing text and voice updates and updates students' status in the system
 - **Shooter & Injury Updates**: Consolidates reports involving shooter location and injuries into a single panel for first responders.
 - helps responders prioritize and answer parent queries intelligently
 - **Secure by default**: Granular Firestore security rules ensure each role only reads/writes data it owns
@@ -25,7 +25,7 @@
 | Styling | Tailwind CSS v4 |
 | Database | Firestore (Firebase) |
 | Auth | Firebase Auth + Firebase Admin SDK |
-| AI | Google Gemini (`@google/genai`) |
+| AI | OpenRouter chat completions API |
 | Validation | Zod |
 
 ***
@@ -36,7 +36,7 @@
 
 - Node.js 18+
 - A Firebase project with Firestore enabled
-- A Google AI Studio API key for Gemini
+- An OpenRouter API key
 - *(Optional)* A Twilio account for SMS
 
 ### Installation
@@ -59,8 +59,9 @@ cp .env.example .env.local
 |----------|-------------|
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase client-side config (browser-safe) |
 | `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Firebase Admin SDK credentials (server-only) |
-| `GEMINI_API_KEY` | Google AI Studio key |
-| `GEMINI_MODEL` | Model ID (default: `gemini-2.5-flash-lite`) |
+| `OPENROUTER_API_KEY` | OpenRouter API key |
+| `OPENROUTER_MODEL` | Model ID (default: `openai/gpt-4o-mini`) |
+| `OPENROUTER_SITE_URL` / `OPENROUTER_SITE_NAME` | Optional OpenRouter app attribution headers |
 | `TWILIO_*` | Twilio credentials for SMS (optional) |
 | `ALLOW_DEMO_AUTH` | Set `true` to bypass real auth in development |
 | `NEXT_PUBLIC_APP_URL` | Base URL (default: `http://localhost:3000`) |
@@ -101,7 +102,7 @@ src/
 │   └── api/            # Next.js API routes (AI, auth, notifications)
 ├── components/         # Shared UI components
 ├── hooks/              # Custom React hooks
-├── lib/                # Firebase client, admin SDK, Gemini client, utilities
+├── lib/                # Firebase client, admin SDK, OpenRouter client, utilities
 └── types/              # Shared TypeScript types
 ```
 

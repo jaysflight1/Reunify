@@ -1,6 +1,6 @@
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { getClientFirestore } from "./config";
-import { ROOM_OPTIONS } from "@/lib/lahs-rooms/room-options";
+import { ROOM_OPTIONS } from "@/lib/general-rooms/room-options";
 
 export type FirestoreRoom = {
   number: string;

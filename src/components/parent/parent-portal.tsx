@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
-import type { RoomStudent } from "@/lib/lahs-rooms";
+import type { RoomStudent } from "@/lib/general-rooms";
 import {
   demoParentById,
   findDemoParents,

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RoleSelector } from "@/components/layout/role-selector";
 
 export default function Home() {
@@ -6,18 +7,18 @@ export default function Home() {
       <BackgroundDecor />
 
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-5 sm:px-10">
-        <a href="/" className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5">
           <LogoMark className="h-7 w-7 text-sky-400" />
           <span className="text-base font-semibold tracking-tight text-white">
             Reunify
           </span>
-        </a>
+        </Link>
         <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs text-slate-300 backdrop-blur sm:flex">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>
-          Los Altos High School · Drill mode
+          General High School · Drill mode
         </div>
       </header>
 
@@ -49,7 +50,7 @@ export default function Home() {
       <footer className="relative z-10 mx-auto max-w-7xl px-6 pb-8 sm:px-10">
         <div className="flex flex-col items-start justify-between gap-2 border-t border-white/[0.06] pt-6 text-[11px] text-slate-500 sm:flex-row sm:items-center">
           <p>Reunify · staff-facing tool. Demo data for evaluation.</p>
-          <p className="font-mono tabular-nums">v0.1 · build · LAHS</p>
+          <p className="font-mono tabular-nums">v0.1 · build · General High School</p>
         </div>
       </footer>
     </div>

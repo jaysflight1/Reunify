@@ -1,4 +1,4 @@
-import { ALL_ROSTER_STUDENTS, getRoomByNumber, type LahsRoom, type RoomStudent } from "@/lib/lahs-rooms";
+import { ALL_ROSTER_STUDENTS, getRoomByNumber, type GeneralRoom, type RoomStudent } from "@/lib/general-rooms";
 import { CAMPUS_MAP } from "@/lib/campus-map-config";
 
 export type DotStatus = "safe" | "unsafe" | "missing";
@@ -31,14 +31,14 @@ export function hashStr(input: string): number {
   return h;
 }
 
-export function rosterRoomFor(studentId: string): LahsRoom | undefined {
+export function rosterRoomFor(studentId: string): GeneralRoom | undefined {
   const match = studentId.match(/^r([^-]+)-/);
   return match ? getRoomByNumber(match[1]) : undefined;
 }
 
 export function dotPositionInRoom(
   studentId: string,
-  room: LahsRoom,
+  room: GeneralRoom,
 ): { x: number; y: number } {
   const h = hashStr(studentId);
   const px = (h & 0x3ff) / 0x3ff;
