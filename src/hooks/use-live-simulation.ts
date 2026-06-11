@@ -36,7 +36,7 @@ const WALKER_COUNT = 18;
 const WALKER_SPEED_MIN = 1.4;
 const WALKER_SPEED_MAX = 3.2;
 const ARRIVE_DISTANCE = 1.2;
-const WALKER_FRAME_MS = 120;
+const WALKER_FRAME_MS = 33;
 
 function studentRoomNumber(student: RoomStudent): string {
   const match = student.id.match(/^r([^-]+)-/);

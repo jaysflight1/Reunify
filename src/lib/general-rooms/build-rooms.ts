@@ -37,8 +37,8 @@ export function buildSingleRoom(
 ): GeneralRoom {
   const specialLabels: Record<string, string> = {
     library: "Library",
-    "student-services": "Student Services Building",
-    theatre: "Room Theater",
+    "student-services": "Student Services",
+    theatre: "Theater",
   };
 
   return {

@@ -192,6 +192,7 @@ export function AdminDashboard() {
             teacherByRoom={live.teacherByRoom}
             studentDots={live.studentDots}
             selectedStudentId={expandedRecordId}
+            onSelectStudent={setExpandedRecordId}
           />
           <p className="mt-2 px-1 text-[10px] leading-relaxed text-[#475569]">
             {live.mode === "firebase" || live.mode === "local"

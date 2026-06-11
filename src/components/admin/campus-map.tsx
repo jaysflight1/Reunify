@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { CAMPUS_MAP } from "@/lib/demo-data";
 import type { GeneralRoom } from "@/lib/general-rooms";
@@ -18,6 +18,7 @@ type CampusMapProps = {
   teacherByRoom: ReadonlyMap<string, TeacherRoomSnapshot>;
   studentDots: readonly StudentDot[];
   selectedStudentId?: string | null;
+  onSelectStudent?: (studentId: string | null) => void;
 };
 
 const VB = `0 0 ${CAMPUS_MAP.viewBox.w} ${CAMPUS_MAP.viewBox.h}`;
@@ -28,6 +29,7 @@ export function CampusMap({
   teacherByRoom,
   studentDots,
   selectedStudentId,
+  onSelectStudent,
 }: CampusMapProps) {
   const [selectedRoom, setSelectedRoom] = useState<GeneralRoom | null>(null);
   const [showRoomNumbers, setShowRoomNumbers] = useState(true);
@@ -82,11 +84,12 @@ export function CampusMap({
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [selectedRoom, pinnedDotId]);
 
-  const clearMapPopups = () => {
+  const clearMapPopups = useCallback(() => {
     setSelectedRoom(null);
     setPinnedDotId(null);
     setHoveredDotId(null);
-  };
+    onSelectStudent?.(null);
+  }, [onSelectStudent]);
 
   return (
     <div
@@ -181,6 +184,7 @@ export function CampusMap({
           pinnedDotId={pinnedDotId}
           setHoveredDotId={setHoveredDotId}
           setPinnedDotId={setPinnedDotId}
+          onSelectStudent={onSelectStudent}
           roomDetailMode="below"
         />
       </div>
@@ -238,6 +242,7 @@ export function CampusMap({
                 pinnedDotId={pinnedDotId}
                 setHoveredDotId={setHoveredDotId}
                 setPinnedDotId={setPinnedDotId}
+                onSelectStudent={onSelectStudent}
                 roomDetailMode="overlay"
               />
             </div>
@@ -262,6 +267,7 @@ function MapCanvas({
   pinnedDotId,
   setHoveredDotId,
   setPinnedDotId,
+  onSelectStudent,
   roomDetailMode,
 }: {
   maxWidthClass: string;
@@ -277,8 +283,33 @@ function MapCanvas({
   pinnedDotId: string | null;
   setHoveredDotId: (id: string | null) => void;
   setPinnedDotId: Dispatch<SetStateAction<string | null>>;
+  onSelectStudent?: (studentId: string | null) => void;
   roomDetailMode: "below" | "overlay";
 }) {
+  const handleClearStudent = useCallback(() => {
+    setPinnedDotId(null);
+    setHoveredDotId(null);
+    onSelectStudent?.(null);
+  }, [onSelectStudent, setHoveredDotId, setPinnedDotId]);
+
+  const handlePinDot = useCallback(
+    (dot: StudentDot) => {
+      setPinnedDotId((current) => {
+        const next = current === dot.studentId ? null : dot.studentId;
+        onSelectStudent?.(next);
+        return next;
+      });
+    },
+    [onSelectStudent, setPinnedDotId],
+  );
+
+  const handleHoverDot = useCallback(
+    (dot: StudentDot | null) => {
+      setHoveredDotId(dot?.studentId ?? null);
+    },
+    [setHoveredDotId],
+  );
+
   return (
     <div
       className={`relative mx-auto w-full ${maxWidthClass}`}
@@ -291,8 +322,7 @@ function MapCanvas({
         }}
         onClick={() => {
           setSelectedRoom(null);
-          setPinnedDotId(null);
-          setHoveredDotId(null);
+          handleClearStudent();
         }}
       >
         <svg
@@ -315,13 +345,9 @@ function MapCanvas({
             <StudentDotsLayer
               dots={studentDots}
               activeDotId={activeDot?.studentId ?? null}
-              onHoverDot={(dot) => setHoveredDotId(dot?.studentId ?? null)}
-              onPinDot={(dot) =>
-                setPinnedDotId((current) =>
-                  current === dot.studentId ? null : dot.studentId,
-                )
-              }
-              onClearPin={() => setPinnedDotId(null)}
+              onHoverDot={handleHoverDot}
+              onPinDot={handlePinDot}
+              onClearPin={handleClearStudent}
             />
           ) : null}
         </svg>
@@ -331,8 +357,7 @@ function MapCanvas({
             dot={activeDot}
             pinned={pinnedDotId === activeDot.studentId}
             onClose={() => {
-              setPinnedDotId(null);
-              setHoveredDotId(null);
+              handleClearStudent();
             }}
           />
         ) : null}
