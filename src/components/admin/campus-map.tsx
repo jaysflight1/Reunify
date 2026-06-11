@@ -294,13 +294,11 @@ function MapCanvas({
 
   const handlePinDot = useCallback(
     (dot: StudentDot) => {
-      setPinnedDotId((current) => {
-        const next = current === dot.studentId ? null : dot.studentId;
-        onSelectStudent?.(next);
-        return next;
-      });
+      const next = pinnedDotId === dot.studentId ? null : dot.studentId;
+      setPinnedDotId(next);
+      onSelectStudent?.(next);
     },
-    [onSelectStudent, setPinnedDotId],
+    [onSelectStudent, pinnedDotId, setPinnedDotId],
   );
 
   const handleHoverDot = useCallback(
