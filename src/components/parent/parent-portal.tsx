@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import type { RoomStudent } from "@/lib/general-rooms";
 import {
@@ -16,6 +15,7 @@ import {
   roomContextForStudent,
   type ParentChildStatus,
 } from "@/lib/parent/child-status";
+import { useParentLiveData } from "@/hooks/use-parent-live-data";
 
 type ChildStatus = ParentChildStatus;
 
@@ -75,7 +75,7 @@ function buildChildView(student: RoomStudent, events: CheckInEvent[]): ChildView
 }
 
 export function ParentPortal() {
-  const live = useAdminLiveData();
+  const live = useParentLiveData();
   const [query, setQuery] = useState("");
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
 
