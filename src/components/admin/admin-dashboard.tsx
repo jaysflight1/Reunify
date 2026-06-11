@@ -114,8 +114,19 @@ export function AdminDashboard() {
           roomNumber: roomFromStudentId(student.id),
         }),
       );
-    return [...latestFromEvents, ...missing];
-  }, [live.events, live.missingStudents]);
+    const implicitSafe = ALL_ROSTER_STUDENTS.filter(
+      (student) => !eventIds.has(student.id) && !live.unaccountedIds.has(student.id),
+    ).map(
+      (student): AdminStudentRecord => ({
+        id: student.id,
+        name: student.name,
+        grade: student.grade,
+        status: "safe",
+        roomNumber: roomFromStudentId(student.id),
+      }),
+    );
+    return [...latestFromEvents, ...missing, ...implicitSafe];
+  }, [live.events, live.missingStudents, live.unaccountedIds]);
 
   const needsHelpRecords = useMemo(
     () =>
