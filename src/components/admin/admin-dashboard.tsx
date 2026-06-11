@@ -296,6 +296,7 @@ function StudentSearch({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const selectedRecord = records.find((record) => record.id === selectedRecordId);
   const filteredRecords = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -317,8 +318,22 @@ function StudentSearch({
     });
   }, [records, query]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [open]);
+
   return (
-    <div className="relative lg:col-start-2 lg:col-span-3">
+    <div ref={rootRef} className="relative lg:col-start-2 lg:col-span-3">
       <label className="sr-only" htmlFor="admin-student-search">
         Search students
       </label>
