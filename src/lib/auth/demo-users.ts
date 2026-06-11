@@ -46,7 +46,7 @@ export const DEMO_USERS: Record<string, AppUser> = {
     id: DEMO_APP_USERS.parent,
     schoolId: DEMO_SCHOOL_ID,
     role: "parent",
-    displayName: "Alyssa Wang Parent",
+    displayName: "Janet Wang",
     linkedStudentIds: ["GHS-1001"],
     isDemoUser: true,
     createdAt: NOW,

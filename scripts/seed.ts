@@ -243,7 +243,7 @@ function buildSeedData(): SeedData {
     makeUser("admin", "Demo Admin"),
     makeUser("teacher", "Ms. Rivera", { assignedClassIds: [DEMO_CLASS_47_ID] }),
     makeUser("student", "Lydia Chen", { linkedStudentId: studentIdForName("Lydia Chen") }),
-    makeUser("parent", "Alyssa Wang Parent", {
+    makeUser("parent", "Janet Wang", {
       linkedStudentIds: [studentIdForName("Alyssa Wang")],
     }),
     makeUser("responder", "Demo Responder"),

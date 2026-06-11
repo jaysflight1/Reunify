@@ -35,16 +35,48 @@ const PARENT_FIRST_NAMES = [
   "Zara",
 ];
 
-function hash(input: string): number {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) h = (h * 31 + input.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-function lastName(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/);
-  return parts.length > 1 ? parts[parts.length - 1]! : fullName;
-}
+const PARENT_LAST_NAMES = [
+  "Adams",
+  "Bennett",
+  "Brooks",
+  "Carter",
+  "Diaz",
+  "Edwards",
+  "Flores",
+  "Grant",
+  "Harris",
+  "Ibrahim",
+  "Johnson",
+  "Keller",
+  "Lopez",
+  "Morgan",
+  "Nelson",
+  "Ortiz",
+  "Parker",
+  "Quinn",
+  "Reed",
+  "Santos",
+  "Turner",
+  "Usman",
+  "Valdez",
+  "Walker",
+  "Xu",
+  "Young",
+  "Zimmerman",
+  "Bishop",
+  "Carson",
+  "Dominguez",
+  "Ellis",
+  "Franklin",
+  "Gomez",
+  "Hughes",
+  "Ingram",
+  "Jacobs",
+  "Khan",
+  "Lambert",
+  "Morris",
+  "Owens",
+];
 
 const MANUAL_PARENTS: DemoParent[] = [
   {
@@ -68,9 +100,9 @@ const manualChildIds = new Set(
 const generatedParents: DemoParent[] = ALL_ROSTER_STUDENTS.filter(
   (student) => !manualChildIds.has(student.id),
 ).map((student, index) => {
-  const firstIdx = (hash(student.id) + index * 13) % PARENT_FIRST_NAMES.length;
-  const first = PARENT_FIRST_NAMES[firstIdx]!;
-  const last = lastName(student.name);
+  const first = PARENT_FIRST_NAMES[index % PARENT_FIRST_NAMES.length]!;
+  const last =
+    PARENT_LAST_NAMES[Math.floor(index / PARENT_FIRST_NAMES.length) % PARENT_LAST_NAMES.length]!;
   return {
     id: `parent-of-${student.id}`,
     fullName: `${first} ${last}`,
@@ -78,19 +110,23 @@ const generatedParents: DemoParent[] = ALL_ROSTER_STUDENTS.filter(
   };
 });
 
-function dedupe(parents: DemoParent[]): DemoParent[] {
+function ensureUniqueParentNames(parents: DemoParent[]): DemoParent[] {
   const seen = new Set<string>();
-  const out: DemoParent[] = [];
-  for (const parent of parents) {
-    const key = parent.fullName.toLowerCase();
-    if (seen.has(key)) continue;
+  return parents.map((parent) => {
+    let fullName = parent.fullName;
+    let key = fullName.toLowerCase();
+    let suffix = 2;
+    while (seen.has(key)) {
+      fullName = `${parent.fullName} ${suffix}`;
+      key = fullName.toLowerCase();
+      suffix++;
+    }
     seen.add(key);
-    out.push(parent);
-  }
-  return out;
+    return fullName === parent.fullName ? parent : { ...parent, fullName };
+  });
 }
 
-export const DEMO_PARENTS: DemoParent[] = dedupe([
+export const DEMO_PARENTS: DemoParent[] = ensureUniqueParentNames([
   ...MANUAL_PARENTS,
   ...generatedParents,
 ]).sort((a, b) => a.fullName.localeCompare(b.fullName));
