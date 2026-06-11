@@ -14,6 +14,9 @@ import type { AdminStudentRecord } from "./admin-types";
 
 type FeedTone = "danger" | "warning" | "safe";
 
+const FAST_SELECTION_SCROLL_MS = 150;
+const SELECTION_SCROLL_PADDING = 12;
+
 function eventToRecord(event: CheckInEvent): AdminStudentRecord {
   return {
     id: event.student.id || event.id,
@@ -445,7 +448,7 @@ function StudentFeedRow({
   const rowRef = useRef<HTMLLIElement>(null);
   useEffect(() => {
     if (!expanded) return;
-    rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    scrollFeedRowIntoView(rowRef.current);
   }, [expanded]);
 
   const accent =
@@ -511,6 +514,68 @@ function StudentFeedRow({
       </button>
     </li>
   );
+}
+
+function scrollFeedRowIntoView(row: HTMLElement | null): void {
+  if (!row) return;
+  const scroller = nearestVerticalScroller(row);
+  if (!scroller) {
+    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return;
+  }
+
+  const scrollerRect = scroller.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  let targetTop = scroller.scrollTop;
+
+  if (rowRect.top < scrollerRect.top + SELECTION_SCROLL_PADDING) {
+    targetTop += rowRect.top - scrollerRect.top - SELECTION_SCROLL_PADDING;
+  } else if (rowRect.bottom > scrollerRect.bottom - SELECTION_SCROLL_PADDING) {
+    targetTop += rowRect.bottom - scrollerRect.bottom + SELECTION_SCROLL_PADDING;
+  } else {
+    return;
+  }
+
+  targetTop = clamp(
+    targetTop,
+    0,
+    Math.max(0, scroller.scrollHeight - scroller.clientHeight),
+  );
+  animateScrollTop(scroller, targetTop);
+}
+
+function nearestVerticalScroller(element: HTMLElement): HTMLElement | null {
+  let parent = element.parentElement;
+  while (parent) {
+    const overflowY = window.getComputedStyle(parent).overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
+function animateScrollTop(scroller: HTMLElement, targetTop: number): void {
+  const startTop = scroller.scrollTop;
+  const delta = targetTop - startTop;
+  if (Math.abs(delta) < 1) return;
+
+  const start = performance.now();
+  const step = (now: number) => {
+    const progress = clamp((now - start) / FAST_SELECTION_SCROLL_MS, 0, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    scroller.scrollTop = startTop + delta * eased;
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function recordStatusText(record: AdminStudentRecord): string {
