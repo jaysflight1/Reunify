@@ -1,9 +1,11 @@
 import { TeacherCheckIn } from "@/components/teacher/teacher-check-in";
+import { HomeLogoLink } from "@/components/layout/home-logo-link";
 
 export default function TeacherPage() {
   return (
     <div className="min-h-screen bg-[#06080a] text-[#e2e8f0]">
       <header className="border-b border-[#232a35] px-4 py-5">
+        <HomeLogoLink className="mb-4" />
         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#64748b]">
           General High School
         </p>

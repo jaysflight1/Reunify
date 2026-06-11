@@ -363,7 +363,7 @@ export function TeacherCheckIn() {
               onClear={speech.reset}
               editable
               onLiveTextChange={speech.setTranscript}
-              transcriptPlaceholder={`Example: "I'm Mr. Blake in room 707, and I have everyone but Maria Garcia"`}
+              transcriptPlaceholder={`Example: "I'm Mr. Blake in room 707, and I have everyone but Gavin Price"`}
             />
           </div>
         </section>

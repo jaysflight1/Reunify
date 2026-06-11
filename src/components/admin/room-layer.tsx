@@ -46,7 +46,10 @@ export function RoomLayer({
               stroke={isSelected ? "#f8fafc" : "rgba(15,23,42,0.7)"}
               strokeWidth={isSelected ? 0.5 : 0.25}
               className="cursor-pointer hover:stroke-[#e2e8f0] hover:[stroke-width:0.4]"
-              onClick={() => onSelectRoom(room)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelectRoom(room);
+              }}
               aria-label={roomSummary}
             />
             {showLabels && room.w >= 2.5 ? (

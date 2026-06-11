@@ -36,6 +36,7 @@ const WALKER_COUNT = 18;
 const WALKER_SPEED_MIN = 1.4;
 const WALKER_SPEED_MAX = 3.2;
 const ARRIVE_DISTANCE = 1.2;
+const WALKER_FRAME_MS = 120;
 
 function studentRoomNumber(student: RoomStudent): string {
   const match = student.id.match(/^r([^-]+)-/);
@@ -348,10 +349,16 @@ export function useLiveSimulation(options: Options = {}) {
       return;
     }
     let last = performance.now();
+    let lastCommit = last;
 
     const tick = (now: number) => {
+      if (now - lastCommit < WALKER_FRAME_MS) {
+        frameRef.current = requestAnimationFrame(tick);
+        return;
+      }
       const dt = Math.min(0.25, (now - last) / 1000);
       last = now;
+      lastCommit = now;
 
       setState((prev) => {
         if (!prev.isLive || prev.walkers.size === 0) return prev;

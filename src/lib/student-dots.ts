@@ -3,6 +3,20 @@ import { CAMPUS_MAP } from "@/lib/campus-map-config";
 
 export type DotStatus = "safe" | "unsafe" | "missing";
 
+export type StudentDotDetails = {
+  grade: string;
+  statusLabel: string;
+  expectedRoom?: string;
+  expectedTeacher?: string;
+  reportedRoom?: string;
+  reporter?: string;
+  note?: string;
+  updatedAt?: string;
+  sourceLabel: string;
+};
+
+type StudentDotDetailsInput = Partial<StudentDotDetails>;
+
 export type StudentDot = {
   studentId: string;
   studentName: string;
@@ -10,6 +24,7 @@ export type StudentDot = {
   x: number;
   y: number;
   walking: boolean;
+  details: StudentDotDetails;
 };
 
 export type Walker = {
@@ -68,18 +83,50 @@ export type StudentStatusInput = {
   statusById: ReadonlyMap<string, DotStatus>;
   /** roster student ids currently unaccounted-for. */
   unaccountedIds: ReadonlySet<string>;
+  /** roster student id -> latest report fields shown in the map bubble. */
+  detailsById?: ReadonlyMap<string, StudentDotDetailsInput>;
   /** roster student id -> override room number (e.g., student said "I'm in room 408"). */
   roomOverrideById?: ReadonlyMap<string, string>;
   /** roster student id -> walker world position (overrides room-based position). */
   walkerById?: ReadonlyMap<string, Walker>;
 };
 
+const STATUS_LABEL: Record<DotStatus, string> = {
+  safe: "Accounted for",
+  missing: "Unaccounted",
+  unsafe: "Needs help",
+};
+
+function detailsForStudent(
+  student: RoomStudent,
+  status: DotStatus,
+  expectedRoom: GeneralRoom | undefined,
+  detail: StudentDotDetailsInput | undefined,
+  walking: boolean,
+): StudentDotDetails {
+  return {
+    grade: detail?.grade ?? student.grade,
+    statusLabel: detail?.statusLabel ?? STATUS_LABEL[status],
+    expectedRoom: detail?.expectedRoom ?? expectedRoom?.label,
+    expectedTeacher: detail?.expectedTeacher ?? expectedRoom?.teacher,
+    reportedRoom: detail?.reportedRoom,
+    reporter: detail?.reporter,
+    note: detail?.note ?? (walking ? "Moving in demo simulation" : undefined),
+    updatedAt: detail?.updatedAt,
+    sourceLabel:
+      detail?.sourceLabel ??
+      (status === "missing" ? "No report yet" : walking ? "Demo simulation" : "Roster"),
+  };
+}
+
 export function buildStudentDots(input: StudentStatusInput): StudentDot[] {
-  const { statusById, unaccountedIds, roomOverrideById, walkerById } = input;
+  const { statusById, unaccountedIds, detailsById, roomOverrideById, walkerById } = input;
   return ALL_ROSTER_STUDENTS.map((student) => {
     const explicit = statusById.get(student.id);
     const status: DotStatus =
       explicit ?? (unaccountedIds.has(student.id) ? "missing" : "safe");
+    const expectedRoom = rosterRoomFor(student.id);
+    const detail = detailsById?.get(student.id);
 
     const walker = walkerById?.get(student.id);
     if (walker) {
@@ -90,6 +137,7 @@ export function buildStudentDots(input: StudentStatusInput): StudentDot[] {
         x: walker.x,
         y: walker.y,
         walking: true,
+        details: detailsForStudent(student, status, expectedRoom, detail, true),
       };
     }
 
@@ -97,7 +145,7 @@ export function buildStudentDots(input: StudentStatusInput): StudentDot[] {
     const overrideRoom = overrideRoomNumber
       ? getRoomByNumber(overrideRoomNumber)
       : undefined;
-    const room = overrideRoom ?? rosterRoomFor(student.id);
+    const room = overrideRoom ?? expectedRoom;
     const pos = room ? dotPositionInRoom(student.id, room) : fallbackPosition(student.id);
     return {
       studentId: student.id,
@@ -106,6 +154,7 @@ export function buildStudentDots(input: StudentStatusInput): StudentDot[] {
       x: pos.x,
       y: pos.y,
       walking: false,
+      details: detailsForStudent(student, status, expectedRoom, detail, false),
     };
   });
 }

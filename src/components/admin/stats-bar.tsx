@@ -1,5 +1,7 @@
 "use client";
 
+import { HomeLogoLink } from "@/components/layout/home-logo-link";
+
 type ModeSelection = "auto" | "demo" | "live";
 
 type StatsBarProps = {
@@ -38,18 +40,7 @@ export function StatsBar({
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-[#232a35] bg-[#080a0d] px-4 py-3">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded border border-[#2a3340] bg-[#12161d]">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4 text-[#94a3b8]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path d="M12 3L4 9v12h16V9l-8-6z" />
-            <path d="M9 21v-6h6v6" />
-          </svg>
-        </div>
+        <HomeLogoLink showLabel={false} className="h-8 w-8 justify-center px-0 py-0" />
         <div>
           <h1 className="text-sm font-semibold tracking-tight text-[#f8fafc]">
             Evacuation Command

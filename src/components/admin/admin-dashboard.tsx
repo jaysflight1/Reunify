@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ALL_ROSTER_STUDENTS, GHS_ROOMS } from "@/lib/general-rooms";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
@@ -9,17 +9,10 @@ import type { CheckInEvent } from "@/hooks/use-live-simulation";
 
 type ModeSelection = "auto" | "demo" | "live";
 import { CampusMap } from "./campus-map";
-import { ConflictList } from "./conflict-list";
-import { LiveFeed } from "./live-feed";
-import { MissingPanel } from "./missing-panel";
-import { PriorityAlerts } from "./priority-alerts";
-import { ReportFeed } from "./report-feed";
 import { StatsBar } from "./stats-bar";
-import { StudentProfileDrawer } from "./student-profile-drawer";
-import { StudentStatusTable } from "./student-status-table";
-import { TeachersPanel } from "./teachers-panel";
-import { FirebaseSetupBanner } from "./firebase-setup-banner";
-import type { AdminAlert, AdminStudentRecord } from "./admin-types";
+import type { AdminStudentRecord } from "./admin-types";
+
+type FeedTone = "danger" | "warning" | "safe";
 
 function eventToRecord(event: CheckInEvent): AdminStudentRecord {
   return {
@@ -34,40 +27,6 @@ function eventToRecord(event: CheckInEvent): AdminStudentRecord {
   };
 }
 
-function buildAlerts(records: AdminStudentRecord[], missingCount: number): AdminAlert[] {
-  const alerts: AdminAlert[] = [];
-  const unsafe = records.filter((record) => record.status === "unsafe");
-
-  if (missingCount > 0) {
-    alerts.push({
-      id: "missing",
-      severity: missingCount > 10 ? "critical" : "warning",
-      title: `${missingCount} students unaccounted`,
-      detail: "Use room details and teacher reports to verify status.",
-    });
-  }
-
-  for (const record of unsafe.slice(0, 3)) {
-    alerts.push({
-      id: `unsafe-${record.id}`,
-      severity: "critical",
-      title: `${record.name} needs help`,
-      detail: record.note ?? `Last reported in room ${record.roomNumber ?? "unknown"}.`,
-    });
-  }
-
-  if (alerts.length === 0 && records.length > 0) {
-    alerts.push({
-      id: "stable",
-      severity: "info",
-      title: "No critical student reports",
-      detail: "Continue collecting teacher roll calls and student check-ins.",
-    });
-  }
-
-  return alerts;
-}
-
 function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentRecord[] {
   const byId = new Map<string, AdminStudentRecord>();
 
@@ -80,15 +39,24 @@ function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentReco
   return [...byId.values()];
 }
 
+function roomFromStudentId(id: string): string | undefined {
+  const match = id.match(/^r([^-]+)-/);
+  return match?.[1];
+}
+
+function recordSort(a: AdminStudentRecord, b: AdminStudentRecord): number {
+  return a.name.localeCompare(b.name);
+}
+
 export function AdminDashboard() {
   const firebaseOn = isFirebaseConfigured();
   const localMode = isLocalCheckInMode();
-  const [modeSelection, setModeSelection] = useState<ModeSelection>("auto");
+  const [modeSelection, setModeSelection] = useState<ModeSelection>("demo");
   const liveCapable = firebaseOn || localMode;
   const forceMode =
     modeSelection === "demo" ? "demo" : modeSelection === "live" ? "live" : undefined;
   const live = useAdminLiveData({ forceMode });
-  const [selectedRecord, setSelectedRecord] = useState<AdminStudentRecord | null>(null);
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [clearingLiveData, setClearingLiveData] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
 
@@ -126,8 +94,11 @@ export function AdminDashboard() {
   }, []);
 
   const studentRecords = useMemo(() => {
+    const rosterIds = new Set(ALL_ROSTER_STUDENTS.map((student) => student.id));
     const fromEvents = live.events.map(eventToRecord);
-    const latestFromEvents = latestRecordsByStudent(fromEvents);
+    const latestFromEvents = latestRecordsByStudent(fromEvents).filter((record) =>
+      rosterIds.has(record.id),
+    );
     const eventIds = new Set(latestFromEvents.map((record) => record.id));
     const missing = live.missingStudents
       .filter((student) => !eventIds.has(student.id))
@@ -137,19 +108,41 @@ export function AdminDashboard() {
           name: student.name,
           grade: student.grade,
           status: "unaccounted",
+          roomNumber: roomFromStudentId(student.id),
         }),
       );
     return [...latestFromEvents, ...missing];
   }, [live.events, live.missingStudents]);
 
-  const alerts = useMemo(
-    () => buildAlerts(studentRecords, live.missingStudents.length),
-    [studentRecords, live.missingStudents.length],
+  const needsHelpRecords = useMemo(
+    () =>
+      studentRecords
+        .filter((record) => record.status === "unsafe" && record.note !== "Teacher: not in class")
+        .sort((a, b) => (a.updatedAt && b.updatedAt ? b.updatedAt.localeCompare(a.updatedAt) : 0)),
+    [studentRecords],
+  );
+  const unaccountedRecords = useMemo(
+    () =>
+      studentRecords
+        .filter(
+          (record) =>
+            record.status === "unaccounted" ||
+            (record.status === "unsafe" && record.note === "Teacher: not in class"),
+        )
+        .sort(recordSort),
+    [studentRecords],
+  );
+  const accountedRecords = useMemo(
+    () => studentRecords.filter((record) => record.status === "safe").sort(recordSort),
+    [studentRecords],
+  );
+  const studentRecordMap = useMemo(
+    () => new Map(studentRecords.map((record) => [record.id, record])),
+    [studentRecords],
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#06080a] text-[#e2e8f0]">
-      <FirebaseSetupBanner />
+    <div className="flex min-h-screen flex-col bg-[#06080a] text-[#e2e8f0] lg:h-screen lg:overflow-hidden">
       <StatsBar
         safeCount={live.safeCount}
         unsafeCount={live.unsafeCount}
@@ -191,47 +184,351 @@ export function AdminDashboard() {
         </p>
       ) : null}
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-12 lg:gap-4 lg:p-4">
-        <section className="flex min-h-0 flex-col gap-3 lg:col-span-4 lg:max-h-[calc(100vh-4.25rem)] xl:col-span-3">
-          <PriorityAlerts alerts={alerts} />
-          <div className="h-[min(34vh,300px)] shrink-0 lg:h-[36vh] lg:max-h-[320px] lg:min-h-[200px]">
-            <LiveFeed events={live.events} />
-          </div>
-          <div className="h-[min(28vh,220px)] shrink-0 lg:min-h-[140px] lg:flex-1 lg:max-h-none">
-            <TeachersPanel
-              roomStatsMap={live.roomStatsMap}
-              unaccountedIds={live.unaccountedIds}
-            />
-          </div>
-          <MissingPanel students={live.missingStudents} defaultOpen={false} />
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(12rem,0.55fr)_minmax(12rem,0.55fr)_minmax(12rem,0.55fr)] lg:grid-rows-[auto_1fr] lg:gap-4 lg:overflow-hidden lg:p-4">
+        <section className="min-h-0 lg:row-span-2 lg:overflow-y-auto lg:overscroll-contain">
+          <CampusMap
+            unaccountedIds={live.unaccountedIds}
+            roomStatsMap={live.roomStatsMap}
+            teacherByRoom={live.teacherByRoom}
+            studentDots={live.studentDots}
+            selectedStudentId={expandedRecordId}
+          />
+          <p className="mt-2 px-1 text-[10px] leading-relaxed text-[#475569]">
+            {live.mode === "firebase" || live.mode === "local"
+              ? `${live.events.length} reports · ${GHS_ROOMS.length} rooms · hover dots for student detail`
+              : `Demo · ${GHS_ROOMS.length} rooms · ${ALL_ROSTER_STUDENTS.length} students · hover dots for student detail`}
+          </p>
         </section>
 
-        <section className="flex min-h-[min(50vh,480px)] flex-col lg:col-span-8 lg:min-h-[calc(100vh-5.5rem)] xl:col-span-9">
-          <div className="min-h-0 flex-1">
-            <CampusMap
-              unaccountedIds={live.unaccountedIds}
-              roomStatsMap={live.roomStatsMap}
-              teacherByRoom={live.teacherByRoom}
-              studentDots={live.studentDots}
+        <StudentSearch
+          records={studentRecords}
+          selectedRecordId={expandedRecordId}
+          onSelect={(id) => setExpandedRecordId(id)}
+        />
+
+        <CommandFeed
+          title="Needs help"
+          eyebrow="Unsafe"
+          count={needsHelpRecords.length}
+          tone="danger"
+          emptyTitle="No active needs-help reports"
+          emptyDetail="Unsafe reports will appear here."
+        >
+          {needsHelpRecords.map((record) => (
+            <StudentFeedRow
+              key={record.id}
+              record={record}
+              tone="danger"
+              expanded={expandedRecordId === record.id}
+              selectedRecord={studentRecordMap.get(expandedRecordId ?? "") ?? null}
+              onToggle={setExpandedRecordId}
             />
-          </div>
-          <p className="mt-2 shrink-0 px-1 text-[10px] leading-relaxed text-[#475569]">
-            {live.mode === "firebase" || live.mode === "local"
-              ? `${live.events.length} checked in · ${GHS_ROOMS.length} rooms · click a tile for roster`
-              : `Demo · ${GHS_ROOMS.length} rooms · ${ALL_ROSTER_STUDENTS.length} students · click room for detail`}
-          </p>
-          <div className="mt-3 grid gap-3 xl:grid-cols-3">
-            <div className="xl:col-span-2">
-              <StudentStatusTable records={studentRecords} onSelect={setSelectedRecord} />
-            </div>
-            <div className="grid gap-3">
-              <ReportFeed events={live.events} />
-              <ConflictList records={studentRecords} />
-            </div>
-          </div>
-        </section>
+          ))}
+        </CommandFeed>
+
+        <CommandFeed
+          title="Unaccounted"
+          eyebrow="Verify"
+          count={unaccountedRecords.length}
+          tone="warning"
+          emptyTitle="All students accounted"
+          emptyDetail="Missing students will appear here."
+        >
+          {unaccountedRecords.map((record) => (
+            <StudentFeedRow
+              key={record.id}
+              record={record}
+              tone="warning"
+              expanded={expandedRecordId === record.id}
+              selectedRecord={studentRecordMap.get(expandedRecordId ?? "") ?? null}
+              onToggle={setExpandedRecordId}
+            />
+          ))}
+        </CommandFeed>
+
+        <CommandFeed
+          title="Safe"
+          eyebrow="Accounted"
+          count={accountedRecords.length}
+          tone="safe"
+          emptyTitle="No safe students yet"
+          emptyDetail="Safe reports will appear here."
+        >
+          {accountedRecords.map((record) => (
+            <StudentFeedRow
+              key={record.id}
+              record={record}
+              tone="safe"
+              expanded={expandedRecordId === record.id}
+              selectedRecord={studentRecordMap.get(expandedRecordId ?? "") ?? null}
+              onToggle={setExpandedRecordId}
+            />
+          ))}
+        </CommandFeed>
       </main>
-      <StudentProfileDrawer record={selectedRecord} onClose={() => setSelectedRecord(null)} />
     </div>
+  );
+}
+
+function StudentSearch({
+  records,
+  selectedRecordId,
+  onSelect,
+}: {
+  records: AdminStudentRecord[];
+  selectedRecordId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const selectedRecord = records.find((record) => record.id === selectedRecordId);
+  const filteredRecords = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const sorted = [...records].sort(recordSort);
+    if (!q) return sorted;
+    return sorted.filter((record) => {
+      const haystack = [
+        record.name,
+        record.status,
+        record.roomNumber,
+        record.teacherName,
+        record.note,
+        record.grade,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [records, query]);
+
+  return (
+    <div className="relative lg:col-start-2 lg:col-span-3">
+      <label className="sr-only" htmlFor="admin-student-search">
+        Search students
+      </label>
+      <input
+        id="admin-student-search"
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={
+          selectedRecord ? `Selected: ${selectedRecord.name}` : "Search students by name, status, room, or note"
+        }
+        className="w-full rounded-lg border border-[#2a3340] bg-[#0c0f13] px-3 py-2 text-sm text-[#f8fafc] outline-none transition placeholder:text-[#64748b] focus:border-sky-700"
+      />
+      {open ? (
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-96 overflow-y-auto rounded-lg border border-[#334155] bg-[#0c0f13] shadow-2xl shadow-black/50">
+          {filteredRecords.length > 0 ? (
+            filteredRecords.map((record) => (
+              <button
+                key={record.id}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onSelect(record.id);
+                  setQuery("");
+                  setOpen(false);
+                }}
+                className="flex w-full gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#11161d]"
+              >
+                <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${recordDotClass(record)}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                        {record.name}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-[#64748b]">
+                        Grade {record.grade} · {recordStatusText(record)}
+                      </span>
+                    </span>
+                    {record.updatedAt ? (
+                      <time className="shrink-0 font-mono text-[10px] tabular-nums text-[#475569]">
+                        {record.updatedAt}
+                      </time>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block text-xs text-[#94a3b8]">
+                    {record.roomNumber ? `Room ${record.roomNumber}` : "Location unknown"}
+                    {record.teacherName && record.teacherName !== "—" ? ` · ${record.teacherName}` : ""}
+                  </span>
+                  {record.note ? (
+                    <span className="mt-1 block text-xs leading-relaxed text-[#cbd5e1]">
+                      {record.note}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="px-3 py-6 text-center text-xs text-[#64748b]">No matching students</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CommandFeed({
+  title,
+  eyebrow,
+  count,
+  tone,
+  emptyTitle,
+  emptyDetail,
+  children,
+}: {
+  title: string;
+  eyebrow: string;
+  count: number;
+  tone: FeedTone;
+  emptyTitle: string;
+  emptyDetail: string;
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "text-rose-300 border-rose-900/50 bg-rose-950/20"
+      : tone === "warning"
+        ? "text-amber-300 border-amber-900/50 bg-amber-950/20"
+        : "text-emerald-300 border-emerald-900/50 bg-emerald-950/20";
+
+  return (
+    <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[#232a35] bg-[#0c0f13]">
+      <div className="flex items-start justify-between gap-3 border-b border-[#232a35] px-3 py-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+            {eyebrow}
+          </p>
+          <h2 className="mt-1 text-sm font-semibold text-[#f8fafc]">{title}</h2>
+        </div>
+        <span
+          className={`rounded border px-2 py-1 font-mono text-lg font-semibold tabular-nums ${toneClass}`}
+        >
+          {count}
+        </span>
+      </div>
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {count > 0 ? (
+          children
+        ) : (
+          <li className="px-4 py-10 text-center">
+            <p className="text-sm font-medium text-[#cbd5e1]">{emptyTitle}</p>
+            <p className="mx-auto mt-1 max-w-64 text-xs leading-relaxed text-[#64748b]">
+              {emptyDetail}
+            </p>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function StudentFeedRow({
+  record,
+  tone,
+  expanded,
+  selectedRecord,
+  onToggle,
+}: {
+  record: AdminStudentRecord;
+  tone: FeedTone;
+  expanded: boolean;
+  selectedRecord: AdminStudentRecord | null;
+  onToggle: (id: string | null) => void;
+}) {
+  const rowRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [expanded]);
+
+  const accent =
+    tone === "danger"
+      ? "bg-rose-400"
+      : tone === "warning"
+        ? "bg-amber-300"
+        : "bg-emerald-400";
+  const statusText =
+    record.status === "unsafe"
+      ? "Needs help"
+      : record.status === "unaccounted"
+        ? "Unaccounted"
+        : "Accounted";
+
+  return (
+    <li ref={rowRef} className="border-b border-[#1a212b] last:border-b-0">
+      <button
+        type="button"
+        onClick={() => onToggle(expanded ? null : record.id)}
+        aria-expanded={expanded}
+        className="group flex w-full gap-3 px-3 py-3 text-left transition hover:bg-[#11161d]"
+      >
+        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${accent}`} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-start justify-between gap-2">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-[#f8fafc]">
+                {record.name}
+              </span>
+              <span className="mt-0.5 block text-[10px] text-[#64748b]">
+                Grade {record.grade} · {statusText}
+              </span>
+            </span>
+            {record.updatedAt ? (
+              <time className="shrink-0 font-mono text-[10px] tabular-nums text-[#475569]">
+                {record.updatedAt}
+              </time>
+            ) : null}
+          </span>
+          <span className="mt-2 block text-xs text-[#94a3b8]">
+            {record.roomNumber ? `Room ${record.roomNumber}` : "Location unknown"}
+            {record.teacherName && record.teacherName !== "—" ? ` · ${record.teacherName}` : ""}
+          </span>
+          {record.note ? (
+            <span className="mt-1.5 block rounded border border-[#1f2937] bg-[#111827] px-2 py-1 text-xs leading-relaxed text-[#cbd5e1]">
+              {record.note}
+            </span>
+          ) : null}
+          {expanded ? (
+            <span className="mt-3 grid gap-2 rounded-lg border border-[#263241] bg-[#090c10] p-2 text-xs">
+              <DetailLine label="Status" value={statusText} />
+              <DetailLine label="Location" value={record.roomNumber ? `Room ${record.roomNumber}` : "Unknown"} />
+              <DetailLine label="Teacher" value={record.teacherName && record.teacherName !== "—" ? record.teacherName : "Unknown"} />
+              <DetailLine label="Updated" value={record.updatedAt ?? "Not reported"} />
+              {selectedRecord?.note ? <DetailLine label="Notes" value={selectedRecord.note} /> : null}
+              <span className="text-[10px] leading-relaxed text-[#64748b]">
+                Matching student dot is selected on the map.
+              </span>
+            </span>
+          ) : null}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function recordStatusText(record: AdminStudentRecord): string {
+  if (record.status === "unsafe") return "Needs help";
+  if (record.status === "unaccounted") return "Unaccounted";
+  return "Accounted";
+}
+
+function recordDotClass(record: AdminStudentRecord): string {
+  if (record.status === "unsafe") return "bg-rose-400";
+  if (record.status === "unaccounted") return "bg-amber-300";
+  return "bg-emerald-400";
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="grid grid-cols-[4rem_1fr] gap-2">
+      <span className="text-[#64748b]">{label}</span>
+      <span className="min-w-0 truncate text-[#e2e8f0]">{value}</span>
+    </span>
   );
 }
