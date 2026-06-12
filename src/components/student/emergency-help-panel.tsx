@@ -27,10 +27,6 @@ export function EmergencyHelpPanel({
     <div className="flex flex-col gap-4 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4">
       <div>
         <p className="text-sm font-semibold text-rose-300">You need help now</p>
-        <p className="mt-1 text-xs leading-relaxed text-[#94a3b8]">
-          Staff are alerted. In a real emergency, use your own phone to call 911 — you do
-          not need to pick a room or teacher here.
-        </p>
       </div>
 
       <Simulated911Button />

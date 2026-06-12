@@ -18,6 +18,10 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { EmergencyHelpPanel } from "@/components/student/emergency-help-panel";
 import { LocationSharedStatus } from "@/components/student/location-shared-status";
 import { Simulated911Button } from "@/components/student/simulated-911-button";
+import {
+  formatStudentIdentity,
+  StudentIdentityPicker,
+} from "@/components/student/student-identity-picker";
 import { VoiceCapture } from "@/components/teacher/voice-capture";
 
 type FormState = {
@@ -47,24 +51,39 @@ type StudentTranscriptParseResult = {
   };
 };
 
-export function CheckInForm() {
-  const speech = useSpeechRecognition();
-  const [rooms, setRooms] = useState<FirestoreRoom[]>([]);
-  const [roomsLoading, setRoomsLoading] = useState(true);
-  const [identityQuery, setIdentityQuery] = useState("");
-  const [identityFocused, setIdentityFocused] = useState(false);
-  const [roomQuery, setRoomQuery] = useState("");
-  const [roomFocused, setRoomFocused] = useState(false);
-  const [form, setForm] = useState<FormState>({
-    studentName: "",
-    studentId: "",
-    grade: "",
+type CheckInFormProps = {
+  preselectedStudent?: ExampleStudent | null;
+  onIdentitySelected?: (student: ExampleStudent) => void;
+  onDone?: () => void;
+};
+
+function initialFormState(student?: ExampleStudent | null): FormState {
+  return {
+    studentName: student?.fullName ?? "",
+    studentId: student?.id ?? "",
+    grade: student?.grade ?? "",
     status: "safe",
     offCampus: false,
     roomNumber: "",
     teacherName: "",
     note: "",
-  });
+  };
+}
+
+export function CheckInForm({
+  preselectedStudent,
+  onIdentitySelected,
+  onDone,
+}: CheckInFormProps = {}) {
+  const speech = useSpeechRecognition();
+  const [rooms, setRooms] = useState<FirestoreRoom[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+  const [identityQuery, setIdentityQuery] = useState(
+    preselectedStudent ? formatStudentIdentity(preselectedStudent) : "",
+  );
+  const [roomQuery, setRoomQuery] = useState("");
+  const [roomFocused, setRoomFocused] = useState(false);
+  const [form, setForm] = useState<FormState>(() => initialFormState(preselectedStudent));
   const [shooterNearby, setShooterNearby] = useState(false);
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [locStatus, setLocStatus] = useState<"idle" | "loading" | "ok" | "denied">("idle");
@@ -81,16 +100,6 @@ export function CheckInForm() {
   const onCampus = form.status === "safe" && !form.offCampus;
   const needHelp = form.status === "unsafe";
   const needsRoom = onCampus;
-  const identityMatches = useMemo(() => {
-    const query = identityQuery.trim().toLowerCase();
-    const matches = query
-      ? EXAMPLE_STUDENTS.filter((student) => {
-          const searchable = `${student.fullName} ${student.id}`.toLowerCase();
-          return searchable.includes(query);
-        })
-      : EXAMPLE_STUDENTS;
-    return matches.slice(0, 8);
-  }, [identityQuery]);
   const roomOptions = useMemo(
     () =>
       [...rooms].sort((a, b) =>
@@ -117,13 +126,12 @@ export function CheckInForm() {
       studentId: student.id,
       grade: student.grade,
     }));
-    setIdentityQuery(`${student.fullName} (${student.id})`);
-    setIdentityFocused(false);
+    setIdentityQuery(formatStudentIdentity(student));
+    onIdentitySelected?.(student);
   };
 
   const onIdentityChange = (value: string) => {
     setIdentityQuery(value);
-    setIdentityFocused(true);
     setForm((f) => ({
       ...f,
       studentName: "",
@@ -131,6 +139,17 @@ export function CheckInForm() {
       grade: "",
     }));
   };
+
+  useEffect(() => {
+    if (!preselectedStudent) return;
+    setForm((f) => ({
+      ...f,
+      studentName: preselectedStudent.fullName,
+      studentId: preselectedStudent.id,
+      grade: preselectedStudent.grade,
+    }));
+    setIdentityQuery(formatStudentIdentity(preselectedStudent));
+  }, [preselectedStudent]);
 
   const selectRoom = (room: FirestoreRoom) => {
     setRoomQuery(roomDisplayLabel(room));
@@ -368,10 +387,16 @@ export function CheckInForm() {
         ) : null}
         <button
           type="button"
-          onClick={() => setSubmitted(false)}
+          onClick={() => {
+            if (onDone) {
+              onDone();
+              return;
+            }
+            setSubmitted(false);
+          }}
           className="mt-4 text-sm text-[#94a3b8] underline underline-offset-2"
         >
-          Update my status
+          {onDone ? "Back to student home" : "Update my status"}
         </button>
       </div>
     );
@@ -424,50 +449,12 @@ export function CheckInForm() {
       </section>
 
       <Field label="Name / Student ID" required>
-        <div className="relative">
-          <input
-            className={inputClass}
-            value={identityQuery}
-            onChange={(e) => onIdentityChange(e.target.value)}
-            onFocus={() => setIdentityFocused(true)}
-            onBlur={() => setIdentityFocused(false)}
-            placeholder="Type your name or student ID"
-            autoComplete="off"
-            role="combobox"
-            aria-expanded={identityFocused}
-            aria-controls="student-identity-options"
-          />
-          {identityFocused ? (
-            <div
-              id="student-identity-options"
-              className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-[#2a3340] bg-[#0c0f13] shadow-xl shadow-black/30"
-              role="listbox"
-            >
-              {identityMatches.length > 0 ? (
-                identityMatches.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectIdentity(student)}
-                    className="flex w-full items-center justify-between gap-3 border-b border-[#1a212b] px-3 py-2.5 text-left last:border-b-0 hover:bg-[#12161d]"
-                    role="option"
-                    aria-selected={form.studentId === student.id}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-[#f8fafc]">
-                        {student.fullName}
-                      </span>
-                      <span className="block text-xs text-[#64748b]">{student.id}</span>
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p className="px-3 py-3 text-sm text-[#94a3b8]">No matching students</p>
-              )}
-            </div>
-          ) : null}
-        </div>
+        <StudentIdentityPicker
+          query={identityQuery}
+          selectedStudentId={form.studentId}
+          onQueryChange={onIdentityChange}
+          onSelect={selectIdentity}
+        />
       </Field>
 
       <Field label="How are you?" required>
