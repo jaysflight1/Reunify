@@ -25,6 +25,8 @@ export type StudentReport = {
 };
 
 export type StudentReportInput = {
+  /** Stable client-side id for local/demo updates that must replace one another. */
+  clientReportId?: string;
   studentName: string;
   studentId: string;
   grade: string;

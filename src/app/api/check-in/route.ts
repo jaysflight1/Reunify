@@ -30,6 +30,7 @@ function parseBody(body: unknown): StudentReportInput | null {
       : null;
 
   return {
+    clientReportId: typeof data.clientReportId === "string" ? data.clientReportId : undefined,
     studentName,
     studentId,
     grade,

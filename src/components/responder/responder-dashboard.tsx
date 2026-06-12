@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
 import type { CheckInEvent } from "@/hooks/use-live-simulation";
 import { ALL_ROSTER_STUDENTS, GHS_ROOMS } from "@/lib/general-rooms";
+import { buildStaffStudentRecords } from "@/lib/admin/student-records";
 import { CampusMap } from "@/components/admin/campus-map";
 import type { AdminStudentRecord } from "@/components/admin/admin-types";
 
@@ -15,34 +16,6 @@ const SHOOTER_PATTERN =
 function mentionsShooter(event: CheckInEvent): boolean {
   const haystack = [event.rawText, event.note].filter(Boolean).join(" \n ");
   return haystack.length > 0 && SHOOTER_PATTERN.test(haystack);
-}
-
-function eventToRecord(event: CheckInEvent): AdminStudentRecord {
-  return {
-    id: event.student.id || event.id,
-    name: event.student.name,
-    grade: event.student.grade,
-    status: event.status,
-    roomNumber: event.roomNumber,
-    teacherName: event.teacherName,
-    note: event.note,
-    updatedAt: event.at,
-  };
-}
-
-function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentRecord[] {
-  const byId = new Map<string, AdminStudentRecord>();
-
-  for (const record of records) {
-    if (!byId.has(record.id)) byId.set(record.id, record);
-  }
-
-  return [...byId.values()];
-}
-
-function roomFromStudentId(id: string): string | undefined {
-  const match = id.match(/^r([^-]+)-/);
-  return match?.[1];
 }
 
 function recordSort(a: AdminStudentRecord, b: AdminStudentRecord): number {
@@ -60,23 +33,12 @@ export function ResponderDashboard() {
 
   const studentRecords = useMemo(() => {
     const rosterIds = new Set(ALL_ROSTER_STUDENTS.map((student) => student.id));
-    const latestFromEvents = latestRecordsByStudent(live.events.map(eventToRecord)).filter(
-      (record) => rosterIds.has(record.id),
-    );
-    const eventIds = new Set(latestFromEvents.map((record) => record.id));
-    const missing = live.missingStudents
-      .filter((student) => !eventIds.has(student.id))
-      .map(
-        (student): AdminStudentRecord => ({
-          id: student.id,
-          name: student.name,
-          grade: student.grade,
-          status: "unaccounted",
-          roomNumber: roomFromStudentId(student.id),
-        }),
-      );
-
-    return [...latestFromEvents, ...missing];
+    return buildStaffStudentRecords({
+      events: live.events,
+      missingStudents: live.missingStudents,
+      rosterIds,
+      includeImplicitSafe: false,
+    });
   }, [live.events, live.missingStudents]);
 
   const needsHelpRecords = useMemo(

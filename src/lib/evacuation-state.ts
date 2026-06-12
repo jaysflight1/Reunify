@@ -33,6 +33,7 @@ function latestStudentReports(reports: readonly StudentReport[]): StudentReport[
 function reportsToCheckIns(reports: readonly StudentReport[]): RoomCheckIn[] {
   return latestStudentReports(reports)
     .filter((r) => !r.offCampus && r.roomNumber !== NEED_HELP_ROOM)
+    .filter((r) => r.roomNumber.trim().length > 0)
     .map((r) => ({
       key: `s-${r.id}`,
       roomNumber: r.roomNumber,
@@ -167,13 +168,18 @@ export function computeDashboardStats(
   const teacherByRoom = latestTeacherReportByRoom(teacherReports);
   const latestReports = latestStudentReports(studentReports);
   const unsafeIds = new Set<string>();
+  let anonymousUnsafeCount = 0;
 
   for (const report of latestReports) {
     const id =
       (report.studentId.trim()
         ? ALL_ROSTER_STUDENTS.find((s) => s.id === report.studentId.trim())?.id
         : undefined) ?? rosterIdForStudentName(report.studentName);
-    if (id && report.status === "unsafe") unsafeIds.add(id);
+    if (id && report.status === "unsafe") {
+      unsafeIds.add(id);
+    } else if (!id && report.status === "unsafe") {
+      anonymousUnsafeCount += 1;
+    }
   }
 
   for (const tr of teacherByRoom.values()) {
@@ -201,7 +207,7 @@ export function computeDashboardStats(
 
   return {
     safeCount: safeIds.size,
-    unsafeCount: unsafeIds.size,
+    unsafeCount: unsafeIds.size + anonymousUnsafeCount,
     missingCount,
   };
 }

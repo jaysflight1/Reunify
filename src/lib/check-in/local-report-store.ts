@@ -36,8 +36,9 @@ function store(): LocalStore {
   return s;
 }
 
-function studentDocId(studentId: string): string {
-  return `${ACTIVE_DRILL_ID}_${studentId.trim()}`;
+function studentDocId(input: StudentReportInput): string {
+  const key = input.clientReportId?.trim() || input.studentId.trim();
+  return `${ACTIVE_DRILL_ID}_${key}`;
 }
 
 function teacherDocId(roomNumber: string, teacherName: string): string {
@@ -70,7 +71,7 @@ function mapStudentInput(input: StudentReportInput, id: string, now: number): St
 
 export function upsertLocalStudentReport(input: StudentReportInput): StudentReport {
   const now = Date.now();
-  const id = studentDocId(input.studentId);
+  const id = studentDocId(input);
   const existing = store().studentReports.get(id);
   const report = mapStudentInput(input, id, now);
   if (existing) {

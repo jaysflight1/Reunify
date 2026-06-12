@@ -5,7 +5,7 @@ import { ALL_ROSTER_STUDENTS, GHS_ROOMS } from "@/lib/general-rooms";
 import { isLocalCheckInMode } from "@/lib/check-in/local-mode";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { useAdminLiveData } from "@/hooks/use-admin-live-data";
-import type { CheckInEvent } from "@/hooks/use-live-simulation";
+import { buildStaffStudentRecords } from "@/lib/admin/student-records";
 
 type ModeSelection = "auto" | "demo" | "live";
 import { CampusMap } from "./campus-map";
@@ -16,36 +16,6 @@ type FeedTone = "danger" | "warning" | "safe";
 
 const FAST_SELECTION_SCROLL_MS = 150;
 const SELECTION_SCROLL_PADDING = 12;
-
-function eventToRecord(event: CheckInEvent): AdminStudentRecord {
-  return {
-    id: event.student.id || event.id,
-    name: event.student.name,
-    grade: event.student.grade,
-    status: event.status,
-    roomNumber: event.roomNumber,
-    teacherName: event.teacherName,
-    note: event.note,
-    updatedAt: event.at,
-  };
-}
-
-function latestRecordsByStudent(records: AdminStudentRecord[]): AdminStudentRecord[] {
-  const byId = new Map<string, AdminStudentRecord>();
-
-  for (const record of records) {
-    if (!byId.has(record.id)) {
-      byId.set(record.id, record);
-    }
-  }
-
-  return [...byId.values()];
-}
-
-function roomFromStudentId(id: string): string | undefined {
-  const match = id.match(/^r([^-]+)-/);
-  return match?.[1];
-}
 
 function recordSort(a: AdminStudentRecord, b: AdminStudentRecord): number {
   return a.name.localeCompare(b.name);
@@ -98,34 +68,14 @@ export function AdminDashboard() {
 
   const studentRecords = useMemo(() => {
     const rosterIds = new Set(ALL_ROSTER_STUDENTS.map((student) => student.id));
-    const fromEvents = live.events.map(eventToRecord);
-    const latestFromEvents = latestRecordsByStudent(fromEvents).filter((record) =>
-      rosterIds.has(record.id),
-    );
-    const eventIds = new Set(latestFromEvents.map((record) => record.id));
-    const missing = live.missingStudents
-      .filter((student) => !eventIds.has(student.id))
-      .map(
-        (student): AdminStudentRecord => ({
-          id: student.id,
-          name: student.name,
-          grade: student.grade,
-          status: "unaccounted",
-          roomNumber: roomFromStudentId(student.id),
-        }),
-      );
-    const implicitSafe = ALL_ROSTER_STUDENTS.filter(
-      (student) => !eventIds.has(student.id) && !live.unaccountedIds.has(student.id),
-    ).map(
-      (student): AdminStudentRecord => ({
-        id: student.id,
-        name: student.name,
-        grade: student.grade,
-        status: "safe",
-        roomNumber: roomFromStudentId(student.id),
-      }),
-    );
-    return [...latestFromEvents, ...missing, ...implicitSafe];
+    return buildStaffStudentRecords({
+      events: live.events,
+      missingStudents: live.missingStudents,
+      rosterIds,
+      unaccountedIds: live.unaccountedIds,
+      includeImplicitSafe: true,
+      allRosterStudents: ALL_ROSTER_STUDENTS,
+    });
   }, [live.events, live.missingStudents, live.unaccountedIds]);
 
   const needsHelpRecords = useMemo(
