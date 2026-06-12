@@ -2,6 +2,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /studentBroadcasts/{broadcastId} {
+      allow read: if request.auth != null
+        && resource.data.active == true
+        && resource.data.audience == 'students';
+      allow write: if false;
+    }
+
     match /reports/{reportId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null

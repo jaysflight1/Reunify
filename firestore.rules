@@ -14,6 +14,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Curated student-facing broadcasts only. Staff-only operational data must
+    // stay in separate collections that students cannot read.
+    match /studentBroadcasts/{broadcastId} {
+      allow read: if request.auth != null
+        && resource.data.active == true
+        && resource.data.drillId is string
+        && resource.data.audience == 'students'
+        && resource.data.title is string
+        && resource.data.message is string;
+      allow write: if false;
+    }
+
     // Student check-in reports — read/write own doc only (staff uses Admin API)
     match /reports/{reportId} {
       allow read: if request.auth != null
@@ -40,6 +52,11 @@ service cloud.firestore {
             && request.resource.data.shooterNearby == false)
           || (request.resource.data.status == 'unsafe'
             && request.resource.data.offCampus == false)
+          || (request.resource.data.offCampus == false
+            && request.resource.data.status == 'safe'
+            && request.resource.data.roomNumber == ''
+            && request.resource.data.teacherName == ''
+            && request.resource.data.shooterNearby == false)
           || (request.resource.data.offCampus == false
             && request.resource.data.status == 'safe'
             && request.resource.data.roomNumber.size() > 0
