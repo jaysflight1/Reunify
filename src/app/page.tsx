@@ -22,23 +22,23 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-24 pt-10 sm:px-10 sm:pt-20">
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-24 pt-8 sm:px-10 sm:pt-16">
         <section className="mx-auto max-w-3xl text-center">
-          <p className="mb-6 inline-flex items-center rounded-md border border-slate-700 bg-slate-900/80 px-3.5 py-2 text-sm font-medium text-slate-200 shadow-sm">
+          <p className="mb-4 inline-flex items-center rounded-md border border-slate-700 bg-slate-900/80 px-3.5 py-2 text-sm font-medium text-slate-200 shadow-sm">
             Emergency reunification platform
           </p>
           <h1 className="bg-gradient-to-b from-white to-slate-400 bg-clip-text text-[64px] font-semibold leading-[0.95] tracking-tight text-transparent sm:text-[88px] md:text-[104px]">
             Reunify
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-slate-300 sm:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-slate-300 sm:text-lg">
             Account for every student in the first 60 seconds of an emergency.
             Coordinate staff, responders, and families from a single live picture
             of the campus.
           </p>
         </section>
 
-        <section className="mt-16 sm:mt-20">
-          <div className="mb-5 px-1">
+        <section className="mt-12 sm:mt-16">
+          <div className="mb-4 px-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Choose your role
             </p>
